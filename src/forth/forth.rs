@@ -5,21 +5,16 @@ use crate::stack::stack::Stack;
 enum ForthData {
     Number(i16),
     Operator(String),
+    StackWord(StackWord),
 }
 
-// const DUP: &str = "DUP";
-// const DROP: &str = "DROP";
-// const SWAP: &str = "SWAP";
-// const OVER: &str = "OVER";
-// const ROT: &str = "ROT";
-
-// enum StackManipulation {
-//     DUP,
-//     DROP,
-//     SWAP,
-//     OVER,
-//     ROT,
-// }
+enum StackWord {
+    DUP,
+    DROP,
+    SWAP,
+    OVER,
+    ROT,
+}
 
 pub struct Forth {
     stack: Stack,
@@ -36,6 +31,27 @@ impl Forth {
 
     fn push(&mut self, element: i16) -> Result<(), Error> {
         self.stack.push(element)
+    }
+
+    fn stack_manipulate(&mut self, stack_word: StackWord) -> Result<(), Error> {
+        match stack_word {
+            StackWord::DUP => {
+                self.stack.dup()?;
+            }
+            StackWord::DROP => {
+                self.stack.drop()?;
+            }
+            StackWord::SWAP => {
+                self.stack.swap()?;
+            }
+            StackWord::OVER => {
+                self.stack.over()?;
+            }
+            StackWord::ROT => {
+                self.stack.rot()?;
+            }
+        }
+        Ok(())
     }
 
     fn calculate(&mut self, operator: &str) -> Result<i16, Error> {
@@ -58,7 +74,12 @@ impl Forth {
                 ForthData::Operator(operator) => {
                     let _ = self.calculate(&operator);
                 }
+                ForthData::StackWord(stack_word) => {
+                    let _ = self.stack_manipulate(stack_word);
+                }
             }
+            // println!("Operación actual: {:?}", element);
+            println!("{:?}", self.stack);
         }
         Ok(())
     }
@@ -69,7 +90,7 @@ impl Forth {
 }
 
 mod tests {
-    use crate::forth::forth::{Forth, ForthData};
+    use crate::forth::forth::{Forth, ForthData, StackWord};
 
     #[test]
     fn can_create_forth_with_stack_and_calculator_corectly() {
@@ -133,19 +154,23 @@ mod tests {
         assert_eq!(forth.stack.top(), Ok(expected_result.last().unwrap()));
     }
 
-    // #[test]
-    // fn can_dupplicate_last_element_into_stack() {
-    //     let mut forth = Forth::new(None);
-    //     let elements = vec![1, 2];
-    //     let duplicate_element = elements.last().cloned();
+    #[test]
+    fn stack_can_be_manipulated_correctly() {
+        let mut forth = Forth::new(None);
+        let data: Vec<ForthData> = vec![
+            ForthData::Number(2),
+            ForthData::Number(4),
+            ForthData::StackWord(StackWord::DUP),
+            ForthData::StackWord(StackWord::ROT),
+            ForthData::StackWord(StackWord::OVER),
+            ForthData::StackWord(StackWord::SWAP),
+            ForthData::StackWord(StackWord::DROP),
+        ];
+        let expected_result = vec![4, 4, 2];
 
-    //     for element in &elements {
-    //         let _ = forth.push(*element);
-    //     }
+        let _ = forth.process_data(data);
 
-    //     let _ = forth.dup();
-
-    //     assert_eq!(forth.stack.size(), elements.len() + 1);
-    //     assert_eq!(Some(forth.stack.top().unwrap()), duplicate_element.as_ref());
-    // }
+        assert_eq!(forth.stack.size(), expected_result.len());
+        assert_eq!(forth.stack.top(), Ok(expected_result.last().unwrap()));
+    }
 }

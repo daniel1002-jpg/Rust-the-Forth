@@ -3,6 +3,7 @@ use crate::errors::Error;
 
 const DEFAULT_CAPACITY: usize = 128;
 
+#[derive(Debug, PartialEq)]
 pub struct Stack {
     capacity: usize,
     size: usize,
