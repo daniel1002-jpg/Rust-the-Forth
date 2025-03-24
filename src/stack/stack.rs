@@ -124,9 +124,9 @@ impl Stack {
 
 #[cfg(test)]
 mod tests {
+    use super::DEFAULT_CAPACITY;
     use super::Stack;
     use super::StackError;
-    use super::DEFAULT_CAPACITY;
 
     #[test]
     fn an_empty_stack_can_be_created_successsfully() {

@@ -1,4 +1,5 @@
-const ZERO_DIVISION_ERROR: &str = "division-by-zero";
+use super::calculator_errors::CalculatorError;
+use crate::errors::Error;
 
 pub struct Calculator;
 
@@ -19,20 +20,20 @@ impl Calculator {
         n1 * n2
     }
 
-    fn divide(&self, n1: i16, n2: i16) -> Result<i16, &str> {
+    fn divide(&self, n1: i16, n2: i16) -> Result<i16, Error> {
         match n2 {
-            0 => Err(ZERO_DIVISION_ERROR),
+            0 => Err(CalculatorError::DivisionByZero.into()),
             _ => Ok(n1 / n2),
         }
     }
 
-    pub fn calculate(&self, n1: i16, n2: i16, operation: &str) -> Result<i16, &str> {
+    pub fn calculate(&self, n1: i16, n2: i16, operation: &str) -> Result<i16, Error> {
         match operation {
             "+" => Ok(self.add(n1, n2)),
             "-" => Ok(self.subtract(n1, n2)),
             "*" => Ok(self.multiply(n1, n2)),
             "/" => self.divide(n1, n2),
-            _ => Ok(0),
+            _ => Err(CalculatorError::UndifiedOperation.into()),
         }
     }
 }
@@ -93,7 +94,7 @@ mod tests {
         let calculator = Calculator;
         let n1 = 4;
         let n2 = 0;
-        let expected_result = Err(ZERO_DIVISION_ERROR);
+        let expected_result = Err(CalculatorError::DivisionByZero.into());
 
         let result = calculator.divide(n1, n2);
 
