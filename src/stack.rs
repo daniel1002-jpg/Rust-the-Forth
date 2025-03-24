@@ -81,19 +81,17 @@ impl Stack {
         }
     }
 
-    // pub fn swap(&mut self) -> Result<(), &str> {
-    //     if self.size < 2 {
-    //         return Err(UNDERFLOW_ERROR);
-    //     }
+    pub fn swap(&mut self) -> Result<(), StackError> {
+        if self.size < 2 {
+            return Err(StackError::StackUnderflow);
+        }
 
-    //     let last = self.drop().or_else(|_| Err(UNDERFLOW_ERROR))?;
-    //     let before_last = self.drop().or_else(|_| Err(UNDERFLOW_ERROR))?;
-
-    //     let _ = self.push(before_last);
-    //     let _ = self.push(last);
-
-    //     Ok(())
-    // }
+        let last = self.drop()?;
+        let before_last = self.drop()?;
+        let _ = self.push(before_last);
+        let _ = self.push(last);
+        Ok(())
+    }
 
     // pub fn over(&mut self) -> Result<(), &str> {
     //     if self.size < 2 {
@@ -288,47 +286,47 @@ mod tests {
         assert_eq!(stack.dup(), Err(StackError::StackOverflow));
     }
 
-    // #[test]
-    // fn swapping_from_empty_stack_should_give_error() {
-    //     let mut stack = Stack::new(None);
-    //     assert_eq!(stack.swap(), Err(UNDERFLOW_ERROR));
-    // }
+    #[test]
+    fn swapping_from_empty_stack_should_give_error() {
+        let mut stack = Stack::new(None);
+        assert_eq!(stack.swap(), Err(StackError::StackUnderflow));
+    }
 
-    // #[test]
-    // fn swapping_two_elements_should_not_change_the_size() {
-    //     let mut stack = Stack::new(None);
-    //     let elements = vec![1, 3];
+    #[test]
+    fn swapping_two_elements_should_not_change_the_size() {
+        let mut stack = Stack::new(None);
+        let elements = vec![1, 3];
         
-    //     for element in &elements {
-    //         let _ = stack.push(*element);
-    //     }
+        for element in &elements {
+            let _ = stack.push(*element);
+        }
 
-    //     let _ = stack.swap();
+        let _ = stack.swap();
 
-    //     assert_eq!(stack.size(), elements.len());
-    // }
+        assert_eq!(stack.size(), elements.len());
+    }
 
-    // #[test]
-    // fn can_swap_top_two_elements_in_stack() {
-    //     let mut stack = Stack::new(None);
-    //     let mut elements = vec![1, 3];
-    //     let mut dropped = Vec::new();
+    #[test]
+    fn can_swap_top_two_elements_in_stack() {
+        let mut stack = Stack::new(None);
+        let mut elements = vec![1, 3];
+        let mut dropped = Vec::new();
 
-    //     for element in &elements {
-    //         let _ = stack.push(*element);
-    //     }
+        for element in &elements {
+            let _ = stack.push(*element);
+        }
 
 
-    //     let _ = stack.swap();
-    //     for _ in 0..stack.size() {
-    //         if let Ok(droped) = stack.drop() {
-    //             dropped.push(droped);
-    //         }
-    //     }
-    //     elements.reverse();
+        let _ = stack.swap();
+        for _ in 0..stack.size() {
+            if let Ok(droped) = stack.drop() {
+                dropped.push(droped);
+            }
+        }
+        elements.reverse();
 
-    //     assert_eq!(dropped, elements);
-    // }
+        assert_eq!(dropped, elements);
+    }
 
     // #[test]
     // fn can_use_the_over_action_on_the_stack() {
