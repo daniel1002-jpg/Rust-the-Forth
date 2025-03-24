@@ -54,9 +54,7 @@ impl Stack {
             return Err(StackError::StackUnderflow);
         }
 
-        let dropped = self.data.
-                                                    pop().
-                                                    ok_or(StackError::StackUnderflow);
+        let dropped = self.data.pop().ok_or(StackError::StackUnderflow);
         self.size -= 1;
         dropped
     }
@@ -72,7 +70,7 @@ impl Stack {
         if self.size >= self.capacity {
             return Err(StackError::StackOverflow);
         }
-        
+
         if let Ok(&top) = self.top() {
             let _ = self.push(top);
             Ok(())
@@ -93,10 +91,17 @@ impl Stack {
         Ok(())
     }
 
-    // pub fn over(&mut self) -> Result<(), &str> {
-    //     if self.size < 2 {
-    //         return Err(UNDERFLOW_ERROR);
-    //     }
+    pub fn over(&mut self) -> Result<(), StackError> {
+        if self.size < 2 {
+            return Err(StackError::StackUnderflow);
+        } else if self.size >= self.capacity {
+            return Err(StackError::StackOverflow);
+        }
+
+        let last = self.drop()?;
+        let before_last = *self.top()?;
+        let _ = self.push(last);
+        let _ = self.push(before_last);
 
     //     let last = self.drop().unwrap();
     //     let before_last = self.drop().unwrap();
@@ -105,8 +110,8 @@ impl Stack {
     //     let _ = self.push(last);
     //     let _ = self.push(before_last);
 
-    //     Ok(())
-    // }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -170,7 +175,7 @@ mod tests {
         if let Ok(dropped) = stack.drop() {
             droped_elements.push(Ok(dropped));
         }
-        
+
         assert_eq!(droped_elements, vec![Ok(-3), Ok(2)]);
     }
 
@@ -296,7 +301,7 @@ mod tests {
     fn swapping_two_elements_should_not_change_the_size() {
         let mut stack = Stack::new(None);
         let elements = vec![1, 3];
-        
+
         for element in &elements {
             let _ = stack.push(*element);
         }
@@ -316,7 +321,6 @@ mod tests {
             let _ = stack.push(*element);
         }
 
-
         let _ = stack.swap();
         for _ in 0..stack.size() {
             if let Ok(droped) = stack.drop() {
@@ -328,31 +332,50 @@ mod tests {
         assert_eq!(dropped, elements);
     }
 
-    // #[test]
-    // fn can_use_the_over_action_on_the_stack() {
-    //     let mut stack = Stack::new(None);
-    //     let mut elements = vec![1, 2, 3];
-    //     let mut dropped = Vec::new();
+    #[test]
+    fn use_over_action_with_empty_stack_should_give_error() {
+        let mut stack = Stack::new(None);
+        assert_eq!(stack.over(), Err(StackError::StackUnderflow));
+    }
 
-    //     for element in &elements {
-    //         let _ = stack.push(*element);
-    //     }
+    #[test]
+    fn use_over_action_with_full_stack_shiuld_give_error() {
+        let capacity = 2;
+        let mut stack = Stack::new(Some(capacity));
 
-    //     let _ = stack.over();
+        let mut element = 0;
+        while stack.size() <= stack.capacity() {
+            let _ = stack.push(element);
+            element += 1;
+        }
 
-    //     for _ in 0..stack.size() {
-    //         if let Ok(droped) = stack.drop() {
-    //             dropped.push(droped);
-    //         }
-    //     }
+        assert_eq!(stack.over(), Err(StackError::StackOverflow));
+    }
 
-    //     let last = elements.last().unwrap();
-    //     elements.insert(elements.len() - 1, *elements.last().unwrap());
-    //     elements.push(*last);
+    #[test]
+    fn can_use_the_over_action_on_the_stack() {
+        let mut stack = Stack::new(None);
+        let mut elements = vec![1, 2, 3];
+        let mut dropped = Vec::new();
 
-    //     println!("stack result: {:?}", dropped);
-    //     println!("expected result: {:?}", elements);
+        for element in &elements {
+            let _ = stack.push(*element);
+        }
 
-    //     assert_eq!(dropped, elements);
-    // }
+        let _ = stack.over();
+
+        for _ in 0..stack.size() {
+            if let Ok(droped) = stack.drop() {
+                dropped.push(droped);
+            }
+        }
+
+        let last = elements.pop().unwrap();
+        let before_last = elements.last().copied().unwrap();
+        elements.push(last);
+        elements.push(before_last);
+        elements.reverse();
+
+        assert_eq!(dropped, elements);
+    }
 }
