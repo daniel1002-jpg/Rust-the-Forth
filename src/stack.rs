@@ -102,14 +102,27 @@ impl Stack {
         let before_last = *self.top()?;
         let _ = self.push(last);
         let _ = self.push(before_last);
+        Ok(())
+    }
 
-    //     let last = self.drop().unwrap();
-    //     let before_last = self.drop().unwrap();
+    pub fn rot(&mut self) -> Result<(), StackError> {
+        if self.size < 3 {
+            return Err(StackError::StackUnderflow);
+        }
 
-    //     let _ = self.push(before_last);
-    //     let _ = self.push(last);
-    //     let _ = self.push(before_last);
+        let mut tops = Vec::new();
+        for _ in 0..2 {
+            if let Ok(rotated) = self.drop() {
+                tops.push(rotated);
+            }
+        }
+        tops.reverse();
 
+        let rotate = self.drop()?;
+        for elem in tops {
+            let _ = self.push(elem);
+        }
+        let _ = self.push(rotate);
         Ok(())
     }
 }
@@ -377,5 +390,70 @@ mod tests {
         elements.reverse();
 
         assert_eq!(dropped, elements);
+    }
+
+    #[test]
+    fn can_use_the_over_action_on_the_stack_with_two_elements() {
+        let mut stack = Stack::new(None);
+        let mut elements = vec![1, 2];
+        let mut dropped = Vec::new();
+
+        for element in &elements {
+            let _ = stack.push(*element);
+        }
+
+        let _ = stack.over();
+
+        for _ in 0..stack.size() {
+            if let Ok(droped) = stack.drop() {
+                dropped.push(droped);
+            }
+        }
+
+        let last = elements.pop().unwrap();
+        let before_last = elements.last().copied().unwrap();
+        elements.push(last);
+        elements.push(before_last);
+        elements.reverse();
+
+        assert_eq!(dropped, elements);
+    }
+
+    #[test]
+    fn try_rotate_from_empty_stack_should_give_error() {
+        let mut stack = Stack::new(None);
+        assert_eq!(stack.rot(), Err(StackError::StackUnderflow));
+    }
+
+    #[test]
+    fn can_rotate_top_three_elements_in_stack() {
+        let mut stack = Stack::new(None);
+        let elements = vec![1, 2, 3];
+        let mut dropped = Vec::new();
+
+        for element in &elements {
+            let _ = stack.push(*element);
+        }
+
+        let _ = stack.rot();
+
+        for _ in 0..stack.size() {
+            if let Ok(droped) = stack.drop() {
+                dropped.push(droped);
+            }
+        }
+
+        // let last = elements.pop().unwrap();
+        // let before_last = elements.pop().unwrap();
+        // let before_before_last = elements.last().copied().unwrap();
+        // elements.push(last);
+        // elements.push(before_before_last);
+        // elements.push(before_last);
+        // elements.reverse();
+
+        println!("stack elements rotate: {:?}", dropped);
+        println!("expected result: {:?}", [1, 3, 2]);
+
+        assert_eq!(dropped, [1, 3, 2]);
     }
 }
