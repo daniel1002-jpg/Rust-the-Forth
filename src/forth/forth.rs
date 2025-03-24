@@ -1,9 +1,11 @@
-use crate::{calculator::Calculator, stack::stack::Stack};
+use crate::calculator::calculator::Calculator;
+use crate::errors::Error;
+use crate::stack::stack::Stack;
 
-// enum ForthData {
-//     Number(i16),
-//     Operator(String),
-// }
+enum ForthData {
+    Number(i16),
+    Operator(String),
+}
 
 // const DUP: &str = "DUP";
 // const DROP: &str = "DROP";
@@ -32,40 +34,34 @@ impl Forth {
         }
     }
 
-    fn push(&mut self, element: i16) -> Result<(), StackError> {
+    fn push(&mut self, element: i16) -> Result<(), Error> {
         self.stack.push(element)
     }
 
-    fn calculate(&mut self, operator: &str) -> Result<i16, &str> {
+    fn calculate(&mut self, operator: &str) -> Result<i16, Error> {
         let operand2 = self.stack.drop()?;
         let operand1 = self.stack.drop()?;
 
         let result = self.calculator.calculate(operand1, operand2, operator)?;
 
-        self.stack.push(result);
+        let _ = self.stack.push(result);
 
         Ok(result)
     }
 
-    // fn calculate(&self, elements: Vec<ForthData>) -> Result<i16, &str> {
-    //     let mut operands = vec![];
-
-    //     for element in elements {
-    //         match element {
-    //             ForthData::Number(number) => operands.push(number),
-    //             ForthData::Operator(operator) => {
-    //                 let operand2 = operands.pop().unwrap();
-    //                 let operand1 = operands.pop().unwrap();
-
-    //                 let result = self.calculator.calculate(operand1, operand2, &operator)?;
-
-    //                 operands.push(result);
-    //             }
-    //         }
-    //     }
-
-    //     Ok(operands.pop().unwrap())
-    // }
+    fn process_data(&mut self, data: Vec<ForthData>) -> Result<(), Error> {
+        for element in data {
+            match element {
+                ForthData::Number(number) => {
+                    let _ = self.stack.push(number);
+                }
+                ForthData::Operator(operator) => {
+                    let _ = self.calculate(&operator);
+                }
+            }
+        }
+        Ok(())
+    }
 
     // fn dup(&mut self) -> Result<(), &str> {
     //     self.stack.dup()
@@ -73,7 +69,7 @@ impl Forth {
 }
 
 mod tests {
-    use crate::forth::*;
+    use crate::forth::forth::{Forth, ForthData};
 
     #[test]
     fn can_create_forth_with_stack_and_calculator_corectly() {
@@ -99,40 +95,42 @@ mod tests {
     #[test]
     fn can_be_added_correctly_using_the_stack() {
         let mut forth = Forth::new(None);
-
-        // let operation: Vec<ForthData> = vec![
-        //     ForthData::Number(2),
-        //     ForthData::Number(4),
-        //     ForthData::Operator("+".to_string()),
-        // ];
-
-        forth.push(2);
-        forth.push(4);
+        let _ = forth.push(2);
+        let _ = forth.push(4);
 
         assert_eq!(forth.calculate("+"), Ok(6));
+    }
 
-        // let second_operation: Vec<ForthData> = vec![
-        //     ForthData::Number(2),
-        //     ForthData::Number(4),
-        //     ForthData::Operator("-".to_string()),
-        // ];
+    #[test]
+    fn can_be_divided_correctly_using_the_stack() {
+        let mut forth = Forth::new(None);
+        let _ = forth.push(4);
+        let _ = forth.push(2);
 
-        // let third_operation: Vec<ForthData> = vec![
-        //     ForthData::Number(2),
-        //     ForthData::Number(4),
-        //     ForthData::Operator("*".to_string()),
-        // ];
+        assert_eq!(forth.calculate("/"), Ok(2));
+    }
 
-        // let fourth_operation: Vec<ForthData> = vec![
-        //     ForthData::Number(2),
-        //     ForthData::Number(4),
-        //     ForthData::Operator("/".to_string()),
-        // ];
+    #[test]
+    fn can_perform_complex_operations_correctly() {
+        let mut forth = Forth::new(None);
+        let operation: Vec<ForthData> = vec![
+            ForthData::Number(2),
+            ForthData::Number(4),
+            ForthData::Operator("+".to_string()),
+            ForthData::Number(6),
+            ForthData::Operator("-".to_string()),
+            ForthData::Number(8),
+            ForthData::Number(2),
+            ForthData::Operator("*".to_string()),
+            ForthData::Number(4),
+            ForthData::Operator("/".to_string()),
+        ];
 
-        // assert_eq!(forth.calculate(first_operation), Ok(6));
-        // assert_eq!(forth.calculate(second_operation), Ok(-2));
-        // assert_eq!(forth.calculate(third_operation), Ok(8));
-        // assert_eq!(forth.calculate(fourth_operation), Ok(0));
+        let expected_result = vec![0, 4];
+        let _ = forth.process_data(operation);
+
+        assert_eq!(forth.stack.size(), expected_result.len());
+        assert_eq!(forth.stack.top(), Ok(expected_result.last().unwrap()));
     }
 
     // #[test]
