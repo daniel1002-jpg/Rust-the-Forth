@@ -1,20 +1,27 @@
-use super::operations::{StackWord};
+use super::operations::StackWord;
 use crate::calculator::calculator::Calculator;
 use crate::errors::Error;
 use crate::stack::stack::Stack;
 use std::collections::HashMap;
-use std::ops::Deref;
 
-enum ForthData<'a> {
+enum ForthInstruction<'a> {
     Number(i16),
-    Operator(String),
-    StackWord(StackWord),
-    // Define(Define),
+    Operator(&'a str),
+    StackWord(&'a StackWord),
     StartDefinition,
     EndDefinition,
     DefineWord(DefineWord<'a>),
 }
 
+#[derive(Debug, PartialEq)]
+enum ForthData<'a> {
+    Number(i16),
+    Operator(&'a str),
+    StackWord(&'a StackWord),
+    DefineWord(DefineWord<'a>),
+}
+
+#[derive(Debug, PartialEq)]
 enum DefineWord<'a> {
     Name(&'a str),
     Body(Vec<&'a str>),
@@ -26,7 +33,7 @@ pub struct Forth<'a> {
     words: HashMap<&'a str, Vec<ForthData<'a>>>,
 }
 
-impl<'a> Forth<'_> {
+impl<'a> Forth<'a> {
     fn new(stack_capacity: Option<usize>) -> Self {
         Forth {
             stack: Stack::new(stack_capacity),
@@ -63,19 +70,19 @@ impl<'a> Forth<'_> {
         Ok(result)
     }
 
-    fn process_data(&mut self, data: Vec<ForthData>) -> Result<(), Error> {
+    fn process_data(&mut self, data: Vec<ForthInstruction<'a>>) -> Result<(), Error> {
         for (i, element) in data.iter().enumerate() {
             match element {
-                ForthData::Number(number) => {
-                    let _ = self.stack.push(*number);
+                &ForthInstruction::Number(number) => {
+                    let _ = self.stack.push(number);
                 }
-                ForthData::Operator(operator) => {
+                ForthInstruction::Operator(operator) => {
                     let _ = self.calculate(&operator);
                 }
-                ForthData::StackWord(stack_word) => {
+                ForthInstruction::StackWord(stack_word) => {
                     let _ = self.stack_manipulate(stack_word);
                 }
-                ForthData::StartDefinition => {
+                ForthInstruction::StartDefinition => {
                     let _ = self.process_word(&data[i..]);
                 }
                 _ => {}
@@ -86,13 +93,14 @@ impl<'a> Forth<'_> {
         Ok(())
     }
 
-    fn process_word(&mut self, data: &[ForthData]) -> Result<(), Error> {
+    fn process_word(&mut self, data: &[ForthInstruction<'a>]) -> Result<(), Error> {
         let mut i = 0;
         for (index, element) in data.iter().enumerate() {
             i = index;
             match element {
-                ForthData::StartDefinition => {
-                    if let ForthData::DefineWord(DefineWord::Name(word_name)) = data[i + 1] {
+                ForthInstruction::StartDefinition => {
+                    if let ForthInstruction::DefineWord(DefineWord::Name(word_name)) = &data[i + 1]
+                    {
                         let _ = self.define_new_word(word_name, &data[i + 2..]);
                         break;
                     }
@@ -100,20 +108,10 @@ impl<'a> Forth<'_> {
                 _ => {}
             }
         }
-        
-        // match prefix {
-        //     Define::Start => {
-        //         self.define_new_word(data)?;
-        //     }
-        //     Define::End => {}
-        //     Define::Word(word) => {
-        //         // let _ = self.process_data(data[1..].to_vec());
-        //     }
-        // }
         Ok(())
     }
 
-    fn define_new_word(&mut self, word_name: &str, word_body: &[ForthData<'a>]) -> Result<(), Error> {
+    fn define_new_word(&mut self, word_name: &'a str, word_body: &[ForthInstruction<'a>]) -> Result<(), Error> {
         // let mut word = Word::Name(data[1]);
         let end_index = self.find_end_definition(word_body);
         let mut word_definition = Vec::new();
@@ -122,42 +120,33 @@ impl<'a> Forth<'_> {
             for element in definition {
                 // word_definition.push(element);
                 match element {
-                    ForthData::Number(number) => {
+                    ForthInstruction::Number(number) => {
                         word_definition.push(ForthData::Number(*number));
                     }
-                    ForthData::Operator(operator) => {
-                        word_definition.push(ForthData::Operator(operator.to_string()));
+                    ForthInstruction::Operator(operator) => {
+                        word_definition.push(ForthData::Operator(*operator));
                     }
-                    // ForthData::StackWord(stack_word) => {
-                    //     word_definition.push(ForthData::StackWord(*stack_word));
-                    // }
+                    ForthInstruction::StackWord(stack_word) => {
+                        word_definition.push(ForthData::StackWord(*stack_word));
+                    }
+                    ForthInstruction::DefineWord(define_word) => match define_word {
+                        DefineWord::Name(name) => {
+                            word_definition
+                                .push(ForthData::DefineWord(DefineWord::Name(name)));
+                        }
+                        _ => {}
+                    },
                     _ => {}
                 }
             }
             self.words.insert(word_name, word_definition);
         }
-
-        // for element in data {
-        //     match element {
-        //         ForthData::Define(Define::End) => {
-        //             break;
-        //         }
-        //         ForthData::Define(Define::Word(word_name)) => {
-        //             // self.words.insert(word_name, None);
-        //             // word = *element;
-        //         }
-        //         _ => {
-        //             word_data.push(element);
-        //         }
-        //     }
-        // }
-        // self.words.insert(word, Word::Body(word_data));
         Ok(())
     }
 
-    fn find_end_definition(&self, word_body: &[ForthData<'a>]) -> Option<usize> {
+    fn find_end_definition(&self, word_body: &[ForthInstruction<'a>]) -> Option<usize> {
         for (index, element) in word_body.iter().enumerate() {
-            if let ForthData::EndDefinition = element {
+            if let ForthInstruction::EndDefinition = element {
                 return Some(index);
             }
         }
@@ -166,10 +155,7 @@ impl<'a> Forth<'_> {
 }
 
 mod tests {
-    use crate::forth::{
-        forth::{DefineWord, Forth, ForthData, StackWord},
-        // operations::Define,
-    };
+    use crate::forth::forth::{DefineWord, Forth, ForthData, ForthInstruction, StackWord};
 
     #[test]
     fn can_create_forth_with_stack_and_calculator_corectly() {
@@ -213,17 +199,17 @@ mod tests {
     #[test]
     fn can_perform_complex_operations_correctly() {
         let mut forth = Forth::new(None);
-        let operation: Vec<ForthData> = vec![
-            ForthData::Number(2),
-            ForthData::Number(4),
-            ForthData::Operator("+".to_string()),
-            ForthData::Number(6),
-            ForthData::Operator("-".to_string()),
-            ForthData::Number(8),
-            ForthData::Number(2),
-            ForthData::Operator("*".to_string()),
-            ForthData::Number(4),
-            ForthData::Operator("/".to_string()),
+        let operation: Vec<ForthInstruction> = vec![
+            ForthInstruction::Number(2),
+            ForthInstruction::Number(4),
+            ForthInstruction::Operator("+"),
+            ForthInstruction::Number(6),
+            ForthInstruction::Operator("-"),
+            ForthInstruction::Number(8),
+            ForthInstruction::Number(2),
+            ForthInstruction::Operator("*"),
+            ForthInstruction::Number(4),
+            ForthInstruction::Operator("/"),
         ];
 
         let expected_result = vec![0, 4];
@@ -236,14 +222,14 @@ mod tests {
     #[test]
     fn stack_can_be_manipulated_correctly() {
         let mut forth = Forth::new(None);
-        let data: Vec<ForthData> = vec![
-            ForthData::Number(2),
-            ForthData::Number(4),
-            ForthData::StackWord(StackWord::DUP),
-            ForthData::StackWord(StackWord::ROT),
-            ForthData::StackWord(StackWord::OVER),
-            ForthData::StackWord(StackWord::SWAP),
-            ForthData::StackWord(StackWord::DROP),
+        let data: Vec<ForthInstruction> = vec![
+            ForthInstruction::Number(2),
+            ForthInstruction::Number(4),
+            ForthInstruction::StackWord(&StackWord::DUP),
+            ForthInstruction::StackWord(&StackWord::ROT),
+            ForthInstruction::StackWord(&StackWord::OVER),
+            ForthInstruction::StackWord(&StackWord::SWAP),
+            ForthInstruction::StackWord(&StackWord::DROP),
         ];
         let expected_result = vec![4, 4, 2];
 
@@ -256,18 +242,21 @@ mod tests {
     #[test]
     fn can_define_new_words() {
         let mut forth = Forth::new(None);
-        let data: Vec<ForthData> = vec![
-            ForthData::StartDefinition,                 // start
-            ForthData::DefineWord(DefineWord::Name("NEGATE")), // word
-            ForthData::Number(-1),
-            ForthData::Operator("*".to_string()),
-            ForthData::EndDefinition, // end
+        let data: Vec<ForthInstruction> = vec![
+            ForthInstruction::StartDefinition,                        // start
+            ForthInstruction::DefineWord(DefineWord::Name("NEGATE")), // word
+            ForthInstruction::Number(-1),
+            ForthInstruction::Operator("*"),
+            ForthInstruction::EndDefinition, // end
         ];
 
         let _ = forth.process_data(data);
 
         assert_eq!(forth.stack.size(), 0);
-        // assert_eq!(forth.words.len(), 1);
-        // assert_eq!(forth.words.get("NEGATE"), Some(vec![ForthData::Number(-1), ForthData::Operator("*".to_string())]));
+        assert_eq!(forth.words.len(), 1);
+        let expected_result = vec![ForthData::Number(-1), ForthData::Operator("*")];
+        let actual_definition = forth.words.get("NEGATE").unwrap();
+        assert!(forth.words.contains_key("NEGATE"));
+        assert_eq!(actual_definition, &expected_result);
     }
 }
