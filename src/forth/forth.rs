@@ -84,6 +84,7 @@ impl<'a> Forth<'a> {
                 }
                 ForthInstruction::StartDefinition => {
                     let _ = self.process_word(&data[i..]);
+                    break;
                 }
                 _ => {}
             }
@@ -111,7 +112,11 @@ impl<'a> Forth<'a> {
         Ok(())
     }
 
-    fn define_new_word(&mut self, word_name: &'a str, word_body: &[ForthInstruction<'a>]) -> Result<(), Error> {
+    fn define_new_word(
+        &mut self,
+        word_name: &'a str,
+        word_body: &[ForthInstruction<'a>],
+    ) -> Result<(), Error> {
         // let mut word = Word::Name(data[1]);
         let end_index = self.find_end_definition(word_body);
         let mut word_definition = Vec::new();
@@ -131,8 +136,7 @@ impl<'a> Forth<'a> {
                     }
                     ForthInstruction::DefineWord(define_word) => match define_word {
                         DefineWord::Name(name) => {
-                            word_definition
-                                .push(ForthData::DefineWord(DefineWord::Name(name)));
+                            word_definition.push(ForthData::DefineWord(DefineWord::Name(name)));
                         }
                         _ => {}
                     },
@@ -151,6 +155,32 @@ impl<'a> Forth<'a> {
             }
         }
         None
+    }
+
+    fn execute_new_word(&mut self, word_name: &'a str) -> Result<(), Error> {
+        let mut word_definition = self.words.get(word_name);
+        if let Some(word_definition) = word_definition {
+            for element in word_definition {
+                match element {
+                    ForthData::Number(number) => {
+                        let _ = self.stack.push(*number)?;
+                    }
+                    ForthData::Operator(operator) => {
+                        let _ = self.calculate(operator)?;
+                    }
+                    ForthData::StackWord(stack_word) => {
+                        let _ = self.stack_manipulate(stack_word)?;
+                    }
+                    ForthData::DefineWord(define_word) => match define_word {
+                        DefineWord::Name(name) => {
+                            let _ = self.execute_new_word(name)?;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+        Ok(())
     }
 }
 
@@ -258,5 +288,30 @@ mod tests {
         let actual_definition = forth.words.get("NEGATE").unwrap();
         assert!(forth.words.contains_key("NEGATE"));
         assert_eq!(actual_definition, &expected_result);
+    }
+
+    #[test]
+    fn can_execute_a_new_word_defined() {
+        let mut forth = Forth::new(None);
+        let word: Vec<ForthInstruction> = vec![
+            ForthInstruction::StartDefinition,                        // start
+            ForthInstruction::DefineWord(DefineWord::Name("NEGATE")), // word
+            ForthInstruction::Number(-1),
+            ForthInstruction::Operator("*"),
+            ForthInstruction::EndDefinition, // end
+        ];
+
+        let _ = forth.process_data(word);
+        
+        let data: Vec<ForthInstruction> = vec![
+            ForthInstruction::Number(-10),
+            ForthInstruction::DefineWord(DefineWord::Name("NEGATE")), // word
+        ];
+
+        let _ = forth.process_data(data);
+
+        let expected_result = vec![10];
+
+        assert_eq!(forth.stack.top(), Ok(expected_result.last().unwrap()));
     }
 }
