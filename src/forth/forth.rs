@@ -158,26 +158,35 @@ impl<'a> Forth<'a> {
     }
 
     fn execute_new_word(&mut self, word_name: &'a str) -> Result<(), Error> {
-        let mut word_definition = self.words.get(word_name);
-        if let Some(word_definition) = word_definition {
-            for element in word_definition {
-                match element {
-                    ForthData::Number(number) => {
-                        let _ = self.stack.push(*number)?;
-                    }
-                    ForthData::Operator(operator) => {
-                        let _ = self.calculate(operator)?;
-                    }
-                    ForthData::StackWord(stack_word) => {
-                        let _ = self.stack_manipulate(stack_word)?;
-                    }
-                    ForthData::DefineWord(define_word) => match define_word {
-                        DefineWord::Name(name) => {
-                            let _ = self.execute_new_word(name)?;
-                        }
-                        _ => {}
-                    }
+        if let Some(word_definition) = self.words.get(word_name) {
+            let word_definition: Vec<ForthData> = word_definition.iter().map(|data| match data {
+            ForthData::Number(number) => ForthData::Number(*number),
+            ForthData::Operator(operator) => ForthData::Operator(*operator),
+            ForthData::StackWord(stack_word) => ForthData::StackWord(*stack_word),
+            ForthData::DefineWord(define_word) => match define_word {
+                DefineWord::Name(name) => ForthData::DefineWord(DefineWord::Name(name)),
+                _ => ForthData::Number(0),
+            },
+            }).collect();
+
+            for element in word_definition.iter() {
+            match element {
+                ForthData::Number(number) => {
+                self.stack.push(*number)?;
                 }
+                ForthData::Operator(operator) => {
+                self.calculate(operator)?;
+                }
+                ForthData::StackWord(stack_word) => {
+                self.stack_manipulate(stack_word)?;
+                }
+                ForthData::DefineWord(define_word) => match define_word {
+                DefineWord::Name(name) => {
+                    self.execute_new_word(name)?;
+                }
+                _ => {}
+                },
+            }
             }
         }
         Ok(())
@@ -302,7 +311,7 @@ mod tests {
         ];
 
         let _ = forth.process_data(word);
-        
+
         let data: Vec<ForthInstruction> = vec![
             ForthInstruction::Number(-10),
             ForthInstruction::DefineWord(DefineWord::Name("NEGATE")), // word
