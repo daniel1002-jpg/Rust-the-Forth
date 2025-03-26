@@ -1,17 +1,17 @@
 use std::rc::Rc;
 
-use super::intructions::*;
-use crate::stack::stack::Stack;
-use crate::stack::stack_operations::{StackOperation, execute_stack_operation};
+use super::forth_errors::ForthError;
+use super::word::WordManager;
+use super::{intructions::*};
 use crate::calculator::calculator::Calculator;
 use crate::errors::Error;
-use crate::stack::stack_errors::StackError;
-use std::collections::HashMap;
+use crate::stack::stack::Stack;
+use crate::stack::stack_operations::{StackOperation, execute_stack_operation};
 
 pub struct Forth<'a> {
     stack: Stack,
     calculator: Calculator,
-    words: HashMap<&'a str, Rc<Vec<ForthData<'a>>>>,
+    word_manager: WordManager<'a>,
 }
 
 impl<'a> Forth<'a> {
@@ -19,7 +19,7 @@ impl<'a> Forth<'a> {
         Forth {
             stack: Stack::new(stack_capacity),
             calculator: Calculator,
-            words: HashMap::new(),
+            word_manager: WordManager::new(),
         }
     }
 
@@ -64,21 +64,20 @@ impl<'a> Forth<'a> {
                 }
                 _ => {}
             }
-            // println!("Operación actual: {:?}", element);
             println!("{:?}", self.stack);
         }
         Ok(())
     }
 
     fn process_word(&mut self, data: &[ForthInstruction<'a>]) -> Result<(), Error> {
-        // let mut i = 0;
         for (i, element) in data.iter().enumerate() {
-            // i = index;
             if let ForthInstruction::StartDefinition = element {
                 if let ForthInstruction::DefineWord(DefineWord::Name(word_name)) = &data[i + 1] {
                     let word_name = *word_name;
                     let _ = self.define_new_word(word_name, &data[i + 2..]);
                     break;
+                } else {
+                    return Err(ForthError::InvalidWord.into());
                 }
             }
         }
@@ -90,76 +89,29 @@ impl<'a> Forth<'a> {
         word_name: &'a str,
         word_body: &[ForthInstruction<'a>],
     ) -> Result<(), Error> {
-        let end_index = self.find_end_definition(word_body);
-        let mut word_definition = Vec::new();
-        if let Some(end_index) = end_index {
-            let definition = &word_body[..end_index];
-            for element in definition {
-                match element {
-                    ForthInstruction::Number(number) => {
-                        word_definition.push(ForthData::Number(*number));
-                    }
-                    ForthInstruction::Operator(operator) => {
-                        word_definition.push(ForthData::Operator(*operator));
-                    }
-                    ForthInstruction::StackWord(stack_word) => {
-                        word_definition.push(ForthData::StackWord(*stack_word));
-                    }
-                    ForthInstruction::DefineWord(DefineWord::Name(name)) => {
-                        let name = *name;
-                        word_definition.push(ForthData::DefineWord(DefineWord::Name(name)));
-                    }
-                    _ => {}
-                }
-            }
-            self.words.insert(word_name, Rc::new(word_definition));
-        }
+        self.word_manager.define_new_word(word_name, word_body)?;
         Ok(())
-    }
-
-    fn find_end_definition(&self, word_body: &[ForthInstruction<'a>]) -> Option<usize> {
-        for (index, element) in word_body.iter().enumerate() {
-            if let ForthInstruction::EndDefinition = element {
-                return Some(index);
-            }
-        }
-        None
     }
 
     fn execute_new_word(&mut self, word_name: &'a str) -> Result<(), Error> {
-        let mut stack = vec![word_name];
-
-        while let Some(current_word) = stack.pop() {
-            let instructions = match self.words.get(current_word) {
-                Some(definition) => Rc::clone(definition),
-                None => Err(Error::StackError(StackError::Overflow))?,
-            };
-
-            for element in instructions.iter() {
-                match element {
-                    ForthData::Number(number) => {
-                        self.stack.push(*number)?;
-                    }
-                    ForthData::Operator(operator) => {
-                        self.calculate(operator)?;
-                    }
-                    ForthData::StackWord(stack_word) => {
-                        self.stack_manipulate(stack_word)?;
-                    }
-                    ForthData::DefineWord(DefineWord::Name(name)) => {
-                        stack.push(name);
-                    }
-                }
-            }
-        }
+        self.word_manager
+            .execute_word(&mut self.stack, &self.calculator, word_name)?;
         Ok(())
+    }
+
+    fn is_word_defined(&self, word_name: &'a str) -> bool {
+        self.word_manager.is_word_defined(word_name)
+    }
+
+    fn get_word_definition(&self, word_name: &'a str) -> Option<&Rc<Vec<ForthData<'a>>>> {
+        self.word_manager.get_word_definition(word_name)
     }
 }
 
 mod tests {
     use std::rc::Rc;
 
-    use crate::forth::forth::{DefineWord, Forth, ForthData, ForthInstruction}; 
+    use crate::forth::forth::{DefineWord, Forth, ForthData, ForthInstruction, ForthError};
     use crate::stack::stack_operations::StackOperation;
 
     #[test]
@@ -257,12 +209,11 @@ mod tests {
 
         let _ = forth.process_data(data);
 
-        assert_eq!(forth.stack.size(), 0);
-        assert_eq!(forth.words.len(), 1);
-        let expected_result = vec![ForthData::Number(-1), ForthData::Operator("*")];
-        let actual_definition = forth.words.get("NEGATE").unwrap();
-        assert!(forth.words.contains_key("NEGATE"));
-        assert_eq!(*actual_definition, Rc::new(expected_result));
+        assert!(forth.is_word_defined("NEGATE"));
+        let expected_definition = vec![ForthData::Number(-1), ForthData::Operator("*")];
+        let actual_definition = forth.get_word_definition("NEGATE").unwrap();
+
+        assert_eq!(*actual_definition, Rc::new(expected_definition));
     }
 
     #[test]
@@ -275,18 +226,31 @@ mod tests {
             ForthInstruction::Operator("*"),
             ForthInstruction::EndDefinition, // end
         ];
-
-        let _ = forth.process_data(word);
-
         let data: Vec<ForthInstruction> = vec![
             ForthInstruction::Number(-10),
             ForthInstruction::DefineWord(DefineWord::Name("NEGATE")), // word
         ];
-
-        let _ = forth.process_data(data);
-
         let expected_result = vec![10];
 
+        let _ = forth.process_data(word);
+        let _ = forth.process_data(data);
+
         assert_eq!(forth.stack.top(), Ok(expected_result.last().unwrap()));
+    }
+
+    #[test]
+    fn cannot_define_invalid_word() {
+        let mut forth = Forth::new(None);
+        let data: Vec<ForthInstruction> = vec![
+            ForthInstruction::StartDefinition, // start
+            ForthInstruction::Number(11),
+            ForthInstruction::Number(-1),
+            ForthInstruction::Operator("*"),
+            ForthInstruction::EndDefinition, // end
+        ];
+
+        let result = forth.process_data(data);
+
+        assert_eq!(result, Err(ForthError::InvalidWord.into()));
     }
 }

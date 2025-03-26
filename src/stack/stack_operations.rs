@@ -16,10 +16,9 @@ pub fn execute_stack_operation(stack: &mut Stack, operation: &StackOperation) ->
         StackOperation::SWAP => stack.swap()?,
         StackOperation::OVER => stack.over()?,
         StackOperation::ROT => stack.rot()?,
-        StackOperation::DROP => { 
+        StackOperation::DROP => {
             stack.drop()?;
-        },
-
+        }
     }
     Ok(())
 }

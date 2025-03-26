@@ -1,4 +1,5 @@
 use crate::calculator::calculator_errors::CalculatorError;
+use crate::forth::forth_errors::ForthError;
 use crate::stack::stack_errors::StackError;
 use std::fmt;
 
@@ -6,6 +7,7 @@ use std::fmt;
 pub enum Error {
     StackError(StackError),
     CalculatorError(CalculatorError),
+    ForthError(ForthError),
 }
 
 impl fmt::Display for Error {
@@ -13,6 +15,7 @@ impl fmt::Display for Error {
         match *self {
             Error::StackError(ref error) => write!(f, "{}", error),
             Error::CalculatorError(ref error) => write!(f, "{}", error),
+            Error::ForthError(ref error) => write!(f, "{}", error),
         }
     }
 }
@@ -28,5 +31,11 @@ impl From<StackError> for Error {
 impl From<CalculatorError> for Error {
     fn from(error: CalculatorError) -> Error {
         Error::CalculatorError(error)
+    }
+}
+
+impl From<ForthError> for Error {
+    fn from(error: ForthError) -> Error {
+        Error::ForthError(error)
     }
 }

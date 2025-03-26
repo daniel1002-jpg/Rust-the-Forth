@@ -1,5 +1,6 @@
 use crate::stack::stack_operations::StackOperation;
 
+#[derive(Debug, PartialEq)]
 pub enum ForthInstruction<'a> {
     Number(i16),
     Operator(&'a str),
