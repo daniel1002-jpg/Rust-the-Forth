@@ -1,11 +1,11 @@
-#[derive(Debug, PartialEq)]
-pub enum StackWord {
-    DUP,
-    DROP,
-    SWAP,
-    OVER,
-    ROT,
-}
+// #[derive(Debug, PartialEq)]
+// pub enum StackWord {
+//     DUP,
+//     DROP,
+//     SWAP,
+//     OVER,
+//     ROT,
+// }
 
 // pub enum Define {
 //     Start,

@@ -1,34 +1,12 @@
 use std::rc::Rc;
 
-use super::operations::StackWord;
+use super::intructions::*;
+use crate::stack::stack::Stack;
+use crate::stack::stack_operations::{StackOperation, execute_stack_operation};
 use crate::calculator::calculator::Calculator;
 use crate::errors::Error;
-use crate::stack::stack::Stack;
 use crate::stack::stack_errors::StackError;
 use std::collections::HashMap;
-
-enum ForthInstruction<'a> {
-    Number(i16),
-    Operator(&'a str),
-    StackWord(&'a StackWord),
-    StartDefinition,
-    EndDefinition,
-    DefineWord(DefineWord<'a>),
-}
-
-#[derive(Debug, PartialEq)]
-enum ForthData<'a> {
-    Number(i16),
-    Operator(&'a str),
-    StackWord(&'a StackWord),
-    DefineWord(DefineWord<'a>),
-}
-
-#[derive(Debug, PartialEq)]
-enum DefineWord<'a> {
-    Name(&'a str),
-    Body(Vec<&'a str>),
-}
 
 pub struct Forth<'a> {
     stack: Stack,
@@ -49,16 +27,8 @@ impl<'a> Forth<'a> {
         self.stack.push(element)
     }
 
-    fn stack_manipulate(&mut self, stack_word: &StackWord) -> Result<(), Error> {
-        match stack_word {
-            StackWord::DUP => self.stack.dup()?,
-            StackWord::SWAP => self.stack.swap()?,
-            StackWord::OVER => self.stack.over()?,
-            StackWord::ROT => self.stack.rot()?,
-            StackWord::DROP => {
-                self.stack.drop()?;
-            }
-        }
+    fn stack_manipulate(&mut self, stack_operation: &StackOperation) -> Result<(), Error> {
+        execute_stack_operation(&mut self.stack, stack_operation)?;
         Ok(())
     }
 
@@ -91,8 +61,6 @@ impl<'a> Forth<'a> {
                 }
                 ForthInstruction::DefineWord(DefineWord::Name(name)) => {
                     self.execute_new_word(name)?;
-                    // let word_name = *name;
-                    // self.execute_new_word(word_name)?;
                 }
                 _ => {}
             }
@@ -122,13 +90,11 @@ impl<'a> Forth<'a> {
         word_name: &'a str,
         word_body: &[ForthInstruction<'a>],
     ) -> Result<(), Error> {
-        // let mut word = Word::Name(data[1]);
         let end_index = self.find_end_definition(word_body);
         let mut word_definition = Vec::new();
         if let Some(end_index) = end_index {
             let definition = &word_body[..end_index];
             for element in definition {
-                // word_definition.push(element);
                 match element {
                     ForthInstruction::Number(number) => {
                         word_definition.push(ForthData::Number(*number));
@@ -139,13 +105,10 @@ impl<'a> Forth<'a> {
                     ForthInstruction::StackWord(stack_word) => {
                         word_definition.push(ForthData::StackWord(*stack_word));
                     }
-                    ForthInstruction::DefineWord(define_word) => match define_word {
-                        DefineWord::Name(name) => {
-                            let name = *name;
-                            word_definition.push(ForthData::DefineWord(DefineWord::Name(name)));
-                        }
-                        _ => {}
-                    },
+                    ForthInstruction::DefineWord(DefineWord::Name(name)) => {
+                        let name = *name;
+                        word_definition.push(ForthData::DefineWord(DefineWord::Name(name)));
+                    }
                     _ => {}
                 }
             }
@@ -172,8 +135,6 @@ impl<'a> Forth<'a> {
                 None => Err(Error::StackError(StackError::Overflow))?,
             };
 
-            // let instructions: Vec<_> = word_definition.iter().collect();
-            
             for element in instructions.iter() {
                 match element {
                     ForthData::Number(number) => {
@@ -186,10 +147,8 @@ impl<'a> Forth<'a> {
                         self.stack_manipulate(stack_word)?;
                     }
                     ForthData::DefineWord(DefineWord::Name(name)) => {
-                        // self.execute_new_word(name)?;
                         stack.push(name);
                     }
-                    _ => {}
                 }
             }
         }
@@ -200,7 +159,8 @@ impl<'a> Forth<'a> {
 mod tests {
     use std::rc::Rc;
 
-    use crate::forth::forth::{DefineWord, Forth, ForthData, ForthInstruction, StackWord};
+    use crate::forth::forth::{DefineWord, Forth, ForthData, ForthInstruction}; 
+    use crate::stack::stack_operations::StackOperation;
 
     #[test]
     fn can_create_forth_with_stack_and_calculator_corectly() {
@@ -270,11 +230,11 @@ mod tests {
         let data: Vec<ForthInstruction> = vec![
             ForthInstruction::Number(2),
             ForthInstruction::Number(4),
-            ForthInstruction::StackWord(&StackWord::DUP),
-            ForthInstruction::StackWord(&StackWord::ROT),
-            ForthInstruction::StackWord(&StackWord::OVER),
-            ForthInstruction::StackWord(&StackWord::SWAP),
-            ForthInstruction::StackWord(&StackWord::DROP),
+            ForthInstruction::StackWord(&StackOperation::DUP),
+            ForthInstruction::StackWord(&StackOperation::ROT),
+            ForthInstruction::StackWord(&StackOperation::OVER),
+            ForthInstruction::StackWord(&StackOperation::SWAP),
+            ForthInstruction::StackWord(&StackOperation::DROP),
         ];
         let expected_result = vec![4, 4, 2];
 
