@@ -1,8 +1,22 @@
 use super::stack_errors::StackError;
 use crate::errors::Error;
 
-const DEFAULT_CAPACITY: usize = 128;
+/// Default capacity of the stack.
+pub const DEFAULT_CAPACITY: usize = 128;
 
+/// # Stack struct
+///
+/// This struct represents a stack data with a fixed capacity.
+///
+/// ## Fields
+///
+/// * `capacity` - Field that represents the maximum number of elements that the stack can hold.
+///             The capacity can be defined when crating the stack.     
+///             If not provided, the default capacity is 128 kb.
+///
+/// * `size` - Field that represents the current number of elements in the stack.
+///
+/// * `data` - Field that holds the elements of the stack.
 #[derive(Debug, PartialEq)]
 pub struct Stack {
     capacity: usize,
@@ -11,6 +25,8 @@ pub struct Stack {
 }
 
 impl Stack {
+    /// Create a new intance of the stack with a defined capacity.
+    /// If not provided, the default capacity is 128 kb.
     pub fn new(capacity: Option<usize>) -> Self {
         let capacity = capacity.unwrap_or(DEFAULT_CAPACITY);
         let element_size = 2;
@@ -23,18 +39,22 @@ impl Stack {
         }
     }
 
+    /// Get the current size of the stack.
     pub fn size(&self) -> usize {
         self.size
     }
 
+    /// Get the capacity of the stack.
     pub fn capacity(&self) -> usize {
         self.capacity
     }
 
+    /// Check if the stack is empty.
     pub fn is_empty(&self) -> bool {
         self.size == 0
     }
 
+    /// Push an element into the stack.
     pub fn push(&mut self, element: i16) -> Result<(), Error> {
         let is_full = self.size > self.capacity;
         if is_full {
@@ -46,6 +66,7 @@ impl Stack {
         Ok(())
     }
 
+    /// Remove the last element from the stack.
     pub fn drop(&mut self) -> Result<i16, Error> {
         if self.is_empty() {
             return Err(StackError::Underflow.into());
@@ -56,6 +77,7 @@ impl Stack {
         Ok(dropped)
     }
 
+    /// Get the last element from the stack, without removing it.
     pub fn top(&self) -> Result<&i16, Error> {
         match self.data.last() {
             Some(last) => Ok(last),
@@ -63,6 +85,7 @@ impl Stack {
         }
     }
 
+    /// Duplicate the last element of the stack.
     pub fn dup(&mut self) -> Result<(), Error> {
         if self.size >= self.capacity {
             return Err(StackError::Overflow.into());
@@ -76,6 +99,7 @@ impl Stack {
         }
     }
 
+    /// Swap the last two elements of the stack.
     pub fn swap(&mut self) -> Result<(), Error> {
         if self.size < 2 {
             return Err(StackError::Underflow.into());
@@ -88,6 +112,7 @@ impl Stack {
         Ok(())
     }
 
+    /// Duplicate the second element from the top of the stack.
     pub fn over(&mut self) -> Result<(), Error> {
         if self.size < 2 {
             return Err(StackError::Underflow.into());
@@ -102,6 +127,7 @@ impl Stack {
         Ok(())
     }
 
+    /// Rotate the top three elements of the stack.
     pub fn rot(&mut self) -> Result<(), Error> {
         if self.size < 3 {
             return Err(StackError::Underflow.into());
@@ -127,9 +153,6 @@ impl Stack {
 #[cfg(test)]
 mod tests {
     use super::*;
-    // use super::DEFAULT_CAPACITY;
-    // use super::Stack;
-    // use super::StackError;
 
     #[test]
     fn an_empty_stack_can_be_created_successsfully() {

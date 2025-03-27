@@ -1,12 +1,12 @@
 use super::calculator_errors::CalculatorError;
 use crate::errors::Error;
 
-pub struct Calculator;
+pub struct Calculator {}
 
 impl Calculator {
-    // fn new() -> Self {
-    //     Calculator
-    // }
+    pub fn new() -> Self {
+        Calculator {}
+    }
 
     fn add(&self, n1: i16, n2: i16) -> i16 {
         n1 + n2
@@ -43,7 +43,7 @@ mod tests {
 
     #[test]
     fn a_calculator_can_add_correctly() {
-        let calculator = Calculator;
+        let calculator = Calculator::new();
         let n1 = 2;
         let n2 = 4;
         let expected_result = 6;
@@ -55,7 +55,7 @@ mod tests {
 
     #[test]
     fn a_calculator_can_subtract_correctly() {
-        let calculator = Calculator;
+        let calculator = Calculator::new();
         let n1 = 4;
         let n2 = 2;
         let expected_result = 2;
@@ -67,7 +67,7 @@ mod tests {
 
     #[test]
     fn a_calculator_can_multiply_correctly() {
-        let calculator = Calculator;
+        let calculator = Calculator::new();
         let n1 = 4;
         let n2 = 2;
         let expected_result = 8;
@@ -79,7 +79,7 @@ mod tests {
 
     #[test]
     fn a_calculator_can_divide_correctly() {
-        let calculator = Calculator;
+        let calculator = Calculator::new();
         let n1 = 4;
         let n2 = 2;
         let expected_result = Ok(2);
@@ -91,7 +91,7 @@ mod tests {
 
     #[test]
     fn try_divide_by_zero_should_give_error() {
-        let calculator = Calculator;
+        let calculator = Calculator::new();
         let n1 = 4;
         let n2 = 0;
         let expected_result = Err(CalculatorError::DivisionByZero.into());
@@ -103,7 +103,7 @@ mod tests {
 
     #[test]
     fn a_calculator_sould_be_able_to_correctly_perform_the_request_operations() {
-        let calculator = Calculator;
+        let calculator = Calculator::new();
         let n1 = 4;
         let n2 = 2;
         let expected_addition_result = Ok(6);

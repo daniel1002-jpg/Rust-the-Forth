@@ -168,7 +168,7 @@ mod tests {
     fn can_execute_a_new_word_defined() {
         let mut word_manager = WordManager::new();
         let stack: &mut Stack = &mut Stack::new(None);
-        let calculator = Calculator;
+        let calculator = Calculator::new();
         let boolean_manager: &mut BooleanOperationManager = &mut BooleanOperationManager::new();
         let word: Vec<ForthInstruction> = vec![
             ForthInstruction::Number(-1),
@@ -188,7 +188,7 @@ mod tests {
     fn cannot_execute_unknown_word() {
         let mut word_manager = WordManager::new();
         let stack: &mut Stack = &mut Stack::new(None);
-        let calculator = Calculator;
+        let calculator = Calculator::new();
         let boolean_manager: &mut BooleanOperationManager = &mut BooleanOperationManager::new();
         let word: Vec<ForthInstruction> = vec![
             ForthInstruction::Number(-1),

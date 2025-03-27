@@ -20,7 +20,7 @@ impl<'a> Forth<'a> {
     fn new(stack_capacity: Option<usize>) -> Self {
         Forth {
             stack: Stack::new(stack_capacity),
-            calculator: Calculator,
+            calculator: Calculator::new(),
             word_manager: WordManager::new(),
             boolean_manager: BooleanOperationManager::new(),
         }
@@ -117,8 +117,12 @@ impl<'a> Forth<'a> {
     }
 
     fn execute_new_word(&mut self, word_name: &'a str) -> Result<(), Error> {
-        self.word_manager
-            .execute_word(&mut self.stack, &self.calculator, &mut self.boolean_manager, word_name)?;
+        self.word_manager.execute_word(
+            &mut self.stack,
+            &self.calculator,
+            &mut self.boolean_manager,
+            word_name,
+        )?;
         Ok(())
     }
 

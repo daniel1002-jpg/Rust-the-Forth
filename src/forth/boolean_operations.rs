@@ -30,14 +30,14 @@ impl BooleanOperationManager {
         operand2: Option<i16>,
     ) -> i16 {
         match op {
-            BooleanOperation::And => { 
+            BooleanOperation::And => {
                 if operand1 == TRUE && operand2.unwrap_or(0) == TRUE {
                     TRUE
                 } else {
                     FALSE
                 }
-            },
-            BooleanOperation::Or => { 
+            }
+            BooleanOperation::Or => {
                 if operand1 == TRUE || operand2.unwrap_or(0) == TRUE {
                     TRUE
                 } else {
@@ -54,11 +54,34 @@ impl BooleanOperationManager {
         }
     }
 
-    pub fn execute_logical_operations(&mut self, op: &LogicalOperation, operand1: i16, operand2: i16) -> i16 {
+    pub fn execute_logical_operations(
+        &mut self,
+        op: &LogicalOperation,
+        operand1: i16,
+        operand2: i16,
+    ) -> i16 {
         match op {
-            LogicalOperation::LessThan => if operand1 < operand2 {TRUE} else {FALSE},
-            LogicalOperation::GreaterThan => if operand1 > operand2 {TRUE} else {FALSE},
-            LogicalOperation::Equal => if operand1 == operand2 {TRUE} else {FALSE},
+            LogicalOperation::LessThan => {
+                if operand1 < operand2 {
+                    TRUE
+                } else {
+                    FALSE
+                }
+            }
+            LogicalOperation::GreaterThan => {
+                if operand1 > operand2 {
+                    TRUE
+                } else {
+                    FALSE
+                }
+            }
+            LogicalOperation::Equal => {
+                if operand1 == operand2 {
+                    TRUE
+                } else {
+                    FALSE
+                }
+            }
         }
     }
 }
