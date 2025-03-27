@@ -1,5 +1,5 @@
-const TRUE: i16 = -1;
-const FALSE: i16 = 0;
+pub const TRUE: i16 = -1;
+pub const FALSE: i16 = 0;
 
 #[derive(Debug, PartialEq)]
 pub enum BooleanOperation {
