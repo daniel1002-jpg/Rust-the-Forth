@@ -8,6 +8,8 @@ use crate::forth::intructions::{DefineWord, ForthData, ForthInstruction};
 use crate::stack::stack::Stack;
 use crate::stack::stack_operations::execute_stack_operation;
 
+use super::boolean_operations::BooleanOperationManager;
+
 pub struct WordManager<'a> {
     words: HashMap<&'a str, Rc<Vec<ForthData<'a>>>>,
 }
@@ -24,7 +26,7 @@ impl<'a> WordManager<'a> {
         name: &'a str,
         body: &[ForthInstruction<'a>],
     ) -> Result<(), Error> {
-        let end_index = find_end_definition(&body);
+        let end_index = find_end_definition(body);
         let mut definition = Vec::new();
 
         if let Some(end_index) = end_index {
@@ -35,14 +37,20 @@ impl<'a> WordManager<'a> {
                         definition.push(ForthData::Number(*number));
                     }
                     ForthInstruction::Operator(operator) => {
-                        definition.push(ForthData::Operator(*operator));
+                        definition.push(ForthData::Operator(operator));
                     }
                     ForthInstruction::StackWord(stack_word) => {
-                        definition.push(ForthData::StackWord(*stack_word));
+                        definition.push(ForthData::StackWord(stack_word));
                     }
                     ForthInstruction::DefineWord(DefineWord::Name(name)) => {
                         let name = *name;
                         definition.push(ForthData::DefineWord(DefineWord::Name(name)));
+                    }
+                    ForthInstruction::BooleanOperation(boolean_operation) => {
+                        definition.push(ForthData::BooleanOperation(boolean_operation));
+                    }
+                    ForthInstruction::LogicalOperation(logical_operation) => {
+                        definition.push(ForthData::LogicalOperation(logical_operation));
                     }
                     _ => {}
                 }
@@ -59,6 +67,7 @@ impl<'a> WordManager<'a> {
         &mut self,
         stack: &mut Stack,
         calculator: &Calculator,
+        boolean_manager: &mut BooleanOperationManager,
         word_name: &'a str,
     ) -> Result<(), Error> {
         let mut execution_stack = vec![word_name];
@@ -78,7 +87,7 @@ impl<'a> WordManager<'a> {
                     ForthData::Operator(operator) => {
                         let operand2 = stack.drop()?;
                         let operand1 = stack.drop()?;
-                        let result = calculator.calculate(operand2, operand1, &operator)?;
+                        let result = calculator.calculate(operand2, operand1, operator)?;
                         stack.push(result)?;
                     }
                     ForthData::StackWord(stack_word) => {
@@ -86,6 +95,26 @@ impl<'a> WordManager<'a> {
                     }
                     ForthData::DefineWord(DefineWord::Name(name)) => {
                         execution_stack.push(name);
+                    }
+                    ForthData::BooleanOperation(boolean_operation) => {
+                        let operand2 = stack.drop()?;
+                        let operand1 = stack.drop()?;
+                        let result = boolean_manager.execute_boolean_operation(
+                            boolean_operation,
+                            operand1,
+                            Some(operand2),
+                        );
+                        stack.push(result)?;
+                    }
+                    ForthData::LogicalOperation(logical_operation) => {
+                        let operand2 = stack.drop()?;
+                        let operand1 = stack.drop()?;
+                        let result = boolean_manager.execute_logical_operations(
+                            logical_operation,
+                            operand1,
+                            operand2,
+                        );
+                        stack.push(result)?;
                     }
                 }
             }
@@ -102,7 +131,7 @@ impl<'a> WordManager<'a> {
     }
 }
 
-fn find_end_definition<'a>(body: &[ForthInstruction<'a>]) -> Option<usize> {
+fn find_end_definition(body: &[ForthInstruction<'_>]) -> Option<usize> {
     for (index, element) in body.iter().enumerate() {
         if let ForthInstruction::EndDefinition = element {
             return Some(index);
@@ -140,6 +169,7 @@ mod tests {
         let mut word_manager = WordManager::new();
         let stack: &mut Stack = &mut Stack::new(None);
         let calculator = Calculator;
+        let boolean_manager: &mut BooleanOperationManager = &mut BooleanOperationManager::new();
         let word: Vec<ForthInstruction> = vec![
             ForthInstruction::Number(-1),
             ForthInstruction::Operator("*"),
@@ -149,7 +179,7 @@ mod tests {
 
         let _ = word_manager.define_new_word("NEGATE", &word);
         let _ = stack.push(-10);
-        let _ = word_manager.execute_word(stack, &calculator, "NEGATE");
+        let _ = word_manager.execute_word(stack, &calculator, boolean_manager, "NEGATE");
 
         assert_eq!(stack.top(), Ok(expected_result.last().unwrap()));
     }
@@ -159,6 +189,7 @@ mod tests {
         let mut word_manager = WordManager::new();
         let stack: &mut Stack = &mut Stack::new(None);
         let calculator = Calculator;
+        let boolean_manager: &mut BooleanOperationManager = &mut BooleanOperationManager::new();
         let word: Vec<ForthInstruction> = vec![
             ForthInstruction::Number(-1),
             ForthInstruction::Operator("*"),
@@ -166,7 +197,7 @@ mod tests {
         ];
         let _ = word_manager.define_new_word("NEGATE", &word);
 
-        let result = word_manager.execute_word(stack, &calculator,"ABS");
+        let result = word_manager.execute_word(stack, &calculator, boolean_manager, "ABS");
 
         assert_eq!(result, Err(ForthError::UnknownWord.into()));
     }

@@ -3,20 +3,20 @@ use crate::stack::stack::Stack;
 
 #[derive(Debug, PartialEq)]
 pub enum StackOperation {
-    DUP,
-    DROP,
-    SWAP,
-    OVER,
-    ROT,
+    Dup,
+    Drop,
+    Swap,
+    Over,
+    Rot,
 }
 
 pub fn execute_stack_operation(stack: &mut Stack, operation: &StackOperation) -> Result<(), Error> {
     match operation {
-        StackOperation::DUP => stack.dup()?,
-        StackOperation::SWAP => stack.swap()?,
-        StackOperation::OVER => stack.over()?,
-        StackOperation::ROT => stack.rot()?,
-        StackOperation::DROP => {
+        StackOperation::Dup => stack.dup()?,
+        StackOperation::Swap => stack.swap()?,
+        StackOperation::Over => stack.over()?,
+        StackOperation::Rot => stack.rot()?,
+        StackOperation::Drop => {
             stack.drop()?;
         }
     }

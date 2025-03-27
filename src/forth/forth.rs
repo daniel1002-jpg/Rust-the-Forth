@@ -1,8 +1,9 @@
 use std::rc::Rc;
 
+use super::boolean_operations::BooleanOperationManager;
 use super::forth_errors::ForthError;
+use super::intructions::*;
 use super::word::WordManager;
-use super::{intructions::*};
 use crate::calculator::calculator::Calculator;
 use crate::errors::Error;
 use crate::stack::stack::Stack;
@@ -12,6 +13,7 @@ pub struct Forth<'a> {
     stack: Stack,
     calculator: Calculator,
     word_manager: WordManager<'a>,
+    boolean_manager: BooleanOperationManager,
 }
 
 impl<'a> Forth<'a> {
@@ -20,6 +22,7 @@ impl<'a> Forth<'a> {
             stack: Stack::new(stack_capacity),
             calculator: Calculator,
             word_manager: WordManager::new(),
+            boolean_manager: BooleanOperationManager::new(),
         }
     }
 
@@ -50,7 +53,7 @@ impl<'a> Forth<'a> {
                     self.stack.push(number)?;
                 }
                 ForthInstruction::Operator(operator) => {
-                    self.calculate(&operator)?;
+                    self.calculate(operator)?;
                 }
                 ForthInstruction::StackWord(stack_word) => {
                     self.stack_manipulate(stack_word)?;
@@ -61,6 +64,26 @@ impl<'a> Forth<'a> {
                 }
                 ForthInstruction::DefineWord(DefineWord::Name(name)) => {
                     self.execute_new_word(name)?;
+                }
+                ForthInstruction::BooleanOperation(boolean_operation) => {
+                    let operand2 = self.stack.drop()?;
+                    let operand1 = self.stack.drop()?;
+                    let result = self.boolean_manager.execute_boolean_operation(
+                        boolean_operation,
+                        operand1,
+                        Some(operand2),
+                    );
+                    self.stack.push(result)?;
+                }
+                ForthInstruction::LogicalOperation(logical_operation) => {
+                    let operand2 = self.stack.drop()?;
+                    let operand1 = self.stack.drop()?;
+                    let result = self.boolean_manager.execute_logical_operations(
+                        logical_operation,
+                        operand1,
+                        operand2,
+                    );
+                    self.stack.push(result)?;
                 }
                 _ => {}
             }
@@ -95,7 +118,7 @@ impl<'a> Forth<'a> {
 
     fn execute_new_word(&mut self, word_name: &'a str) -> Result<(), Error> {
         self.word_manager
-            .execute_word(&mut self.stack, &self.calculator, word_name)?;
+            .execute_word(&mut self.stack, &self.calculator, &mut self.boolean_manager, word_name)?;
         Ok(())
     }
 
@@ -111,7 +134,8 @@ impl<'a> Forth<'a> {
 mod tests {
     use std::rc::Rc;
 
-    use crate::forth::forth::{DefineWord, Forth, ForthData, ForthInstruction, ForthError};
+    use crate::forth::boolean_operations::{BooleanOperation, LogicalOperation};
+    use crate::forth::forth::{DefineWord, Forth, ForthData, ForthError, ForthInstruction};
     use crate::stack::stack_operations::StackOperation;
 
     #[test]
@@ -182,11 +206,11 @@ mod tests {
         let data: Vec<ForthInstruction> = vec![
             ForthInstruction::Number(2),
             ForthInstruction::Number(4),
-            ForthInstruction::StackWord(&StackOperation::DUP),
-            ForthInstruction::StackWord(&StackOperation::ROT),
-            ForthInstruction::StackWord(&StackOperation::OVER),
-            ForthInstruction::StackWord(&StackOperation::SWAP),
-            ForthInstruction::StackWord(&StackOperation::DROP),
+            ForthInstruction::StackWord(&StackOperation::Dup),
+            ForthInstruction::StackWord(&StackOperation::Rot),
+            ForthInstruction::StackWord(&StackOperation::Over),
+            ForthInstruction::StackWord(&StackOperation::Swap),
+            ForthInstruction::StackWord(&StackOperation::Drop),
         ];
         let expected_result = vec![4, 4, 2];
 
@@ -252,5 +276,25 @@ mod tests {
         let result = forth.process_data(data);
 
         assert_eq!(result, Err(ForthError::InvalidWord.into()));
+    }
+
+    #[test]
+    fn can_execute_boolean_operations_correctly() {
+        let mut forth = Forth::new(None);
+        let data = vec![
+            ForthInstruction::Number(3),
+            ForthInstruction::Number(4),
+            ForthInstruction::LogicalOperation(&LogicalOperation::LessThan),
+            ForthInstruction::Number(20),
+            ForthInstruction::Number(10),
+            ForthInstruction::LogicalOperation(&LogicalOperation::GreaterThan),
+            ForthInstruction::BooleanOperation(&BooleanOperation::And),
+        ];
+
+        let expected_result = vec![-1];
+
+        assert_eq!(forth.process_data(data), Ok(()));
+        assert_eq!(forth.stack.size(), expected_result.len());
+        assert_eq!(forth.stack.top(), Ok(expected_result.last().unwrap()));
     }
 }

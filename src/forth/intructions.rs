@@ -1,5 +1,7 @@
 use crate::stack::stack_operations::StackOperation;
 
+use super::boolean_operations::{BooleanOperation, LogicalOperation};
+
 #[derive(Debug, PartialEq)]
 pub enum ForthInstruction<'a> {
     Number(i16),
@@ -8,6 +10,8 @@ pub enum ForthInstruction<'a> {
     StartDefinition,
     EndDefinition,
     DefineWord(DefineWord<'a>),
+    BooleanOperation(&'a BooleanOperation),
+    LogicalOperation(&'a LogicalOperation),
 }
 
 #[derive(Debug, PartialEq)]
@@ -16,6 +20,8 @@ pub enum ForthData<'a> {
     Operator(&'a str),
     StackWord(&'a StackOperation),
     DefineWord(DefineWord<'a>),
+    BooleanOperation(&'a BooleanOperation),
+    LogicalOperation(&'a LogicalOperation),
 }
 
 #[derive(Debug, PartialEq)]

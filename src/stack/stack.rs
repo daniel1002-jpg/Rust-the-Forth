@@ -13,7 +13,8 @@ pub struct Stack {
 impl Stack {
     pub fn new(capacity: Option<usize>) -> Self {
         let capacity = capacity.unwrap_or(DEFAULT_CAPACITY);
-        let stack_capacity = capacity * 1024 / 2;
+        let element_size = 2;
+        let stack_capacity = capacity / element_size;
 
         Stack {
             capacity: stack_capacity,
@@ -125,9 +126,10 @@ impl Stack {
 
 #[cfg(test)]
 mod tests {
-    use super::DEFAULT_CAPACITY;
-    use super::Stack;
-    use super::StackError;
+    use super::*;
+    // use super::DEFAULT_CAPACITY;
+    // use super::Stack;
+    // use super::StackError;
 
     #[test]
     fn an_empty_stack_can_be_created_successsfully() {
@@ -221,10 +223,11 @@ mod tests {
     fn can_create_stack_with_defined_capacity() {
         // stack capacity in bytes
         let capacity = 10;
+        let element_size = 2; // i16
         let stack = Stack::new(Some(capacity));
         // stack capacity expected:
-        // capacity * 1024 / number of bytes an element occupies
-        let expected_capacty = capacity * 1024 / 2;
+        // capacity / number of bytes an element occupies
+        let expected_capacty = capacity / element_size;
 
         assert_eq!(stack.capacity(), expected_capacty);
     }
@@ -232,7 +235,8 @@ mod tests {
     #[test]
     fn can_create_stack_with_default_capacity() {
         let stack = Stack::new(None);
-        let expected_capacty = DEFAULT_CAPACITY * 1024 / 2;
+        let element_size = 2; // i16
+        let expected_capacty = DEFAULT_CAPACITY / element_size;
 
         assert_eq!(stack.capacity(), expected_capacty);
     }
