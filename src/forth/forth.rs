@@ -1,9 +1,9 @@
-use std::rc::Rc;
+// use std::rc::Rc;
 
 use super::boolean_operations::BooleanOperationManager;
 use super::forth_errors::ForthError;
 use super::intructions::*;
-use super::word::WordManager;
+use super::word::{Word, WordManager};
 use crate::calculator::calculator::Calculator;
 use crate::errors::Error;
 use crate::stack::stack::Stack;
@@ -17,7 +17,7 @@ pub struct Forth<'a> {
 }
 
 impl<'a> Forth<'a> {
-    fn new(stack_capacity: Option<usize>) -> Self {
+    pub fn new(stack_capacity: Option<usize>) -> Self {
         Forth {
             stack: Stack::new(stack_capacity),
             calculator: Calculator::new(),
@@ -26,13 +26,17 @@ impl<'a> Forth<'a> {
         }
     }
 
-    fn push(&mut self, element: i16) -> Result<(), Error> {
+    pub fn push(&mut self, element: i16) -> Result<(), Error> {
         self.stack.push(element)
     }
 
-    fn stack_manipulate(&mut self, stack_operation: &StackOperation) -> Result<(), Error> {
+    pub fn stack_manipulate(&mut self, stack_operation: &StackOperation) -> Result<(), Error> {
         execute_stack_operation(&mut self.stack, stack_operation)?;
         Ok(())
+    }
+
+    pub fn stack_top(&self) -> Result<&i16, Error> {
+        self.stack.top()
     }
 
     fn calculate(&mut self, operator: &str) -> Result<i16, Error> {
@@ -46,7 +50,7 @@ impl<'a> Forth<'a> {
         Ok(result)
     }
 
-    fn process_data(&mut self, data: Vec<ForthInstruction<'a>>) -> Result<(), Error> {
+    pub fn process_data(&mut self, data: &'a Vec<ForthInstruction<'a>>) -> Result<(), Error> {
         for (i, element) in data.iter().enumerate() {
             match element {
                 &ForthInstruction::Number(number) => {
@@ -92,11 +96,11 @@ impl<'a> Forth<'a> {
         Ok(())
     }
 
-    fn process_word(&mut self, data: &[ForthInstruction<'a>]) -> Result<(), Error> {
+    fn process_word(&mut self, data: &'a [ForthInstruction<'a>]) -> Result<(), Error> {
         for (i, element) in data.iter().enumerate() {
             if let ForthInstruction::StartDefinition = element {
                 if let ForthInstruction::DefineWord(DefineWord::Name(word_name)) = &data[i + 1] {
-                    let word_name = *word_name;
+                    let word_name = Word::UserDefined(word_name.to_string());
                     let _ = self.define_new_word(word_name, &data[i + 2..]);
                     break;
                 } else {
@@ -109,14 +113,14 @@ impl<'a> Forth<'a> {
 
     fn define_new_word(
         &mut self,
-        word_name: &'a str,
-        word_body: &[ForthInstruction<'a>],
+        word_name: Word,
+        word_body: &'a [ForthInstruction<'a>],
     ) -> Result<(), Error> {
-        self.word_manager.define_new_word(word_name, word_body)?;
+        self.word_manager.define_new_word(word_name, &word_body)?;
         Ok(())
     }
 
-    fn execute_new_word(&mut self, word_name: &'a str) -> Result<(), Error> {
+    fn execute_new_word(&mut self, word_name: &str) -> Result<(), Error> {
         self.word_manager.execute_word(
             &mut self.stack,
             &self.calculator,
@@ -126,20 +130,21 @@ impl<'a> Forth<'a> {
         Ok(())
     }
 
-    fn is_word_defined(&self, word_name: &'a str) -> bool {
+    fn is_word_defined(&self, word_name: &Word) -> bool {
         self.word_manager.is_word_defined(word_name)
     }
 
-    fn get_word_definition(&self, word_name: &'a str) -> Option<&Rc<Vec<ForthData<'a>>>> {
+    pub fn get_word_definition(&self, word_name: &Word) -> Option<&Vec<ForthData>> {
         self.word_manager.get_word_definition(word_name)
     }
 }
 
 mod tests {
-    use std::rc::Rc;
+    // use std::rc::Rc;
 
     use crate::forth::boolean_operations::{BooleanOperation, LogicalOperation};
     use crate::forth::forth::{DefineWord, Forth, ForthData, ForthError, ForthInstruction};
+    use crate::forth::word::Word;
     use crate::stack::stack_operations::StackOperation;
 
     #[test]
@@ -198,7 +203,7 @@ mod tests {
         ];
 
         let expected_result = vec![0, 4];
-        let _ = forth.process_data(operation);
+        let _ = forth.process_data(&operation);
 
         assert_eq!(forth.stack.size(), expected_result.len());
         assert_eq!(forth.stack.top(), Ok(expected_result.last().unwrap()));
@@ -218,7 +223,7 @@ mod tests {
         ];
         let expected_result = vec![4, 4, 2];
 
-        let _ = forth.process_data(data);
+        let _ = forth.process_data(&data);
 
         assert_eq!(forth.stack.size(), expected_result.len());
         assert_eq!(forth.stack.top(), Ok(expected_result.last().unwrap()));
@@ -228,40 +233,42 @@ mod tests {
     fn can_define_new_words() {
         let mut forth = Forth::new(None);
         let data: Vec<ForthInstruction> = vec![
-            ForthInstruction::StartDefinition,                        // start
-            ForthInstruction::DefineWord(DefineWord::Name("NEGATE")), // word
+            ForthInstruction::StartDefinition, // start
+            ForthInstruction::DefineWord(DefineWord::Name("NEGATE".to_string())), // word
             ForthInstruction::Number(-1),
             ForthInstruction::Operator("*"),
             ForthInstruction::EndDefinition, // end
         ];
 
-        let _ = forth.process_data(data);
+        let _ = forth.process_data(&data);
 
-        assert!(forth.is_word_defined("NEGATE"));
+        assert!(forth.is_word_defined(&Word::UserDefined("NEGATE".to_string())));
         let expected_definition = vec![ForthData::Number(-1), ForthData::Operator("*")];
-        let actual_definition = forth.get_word_definition("NEGATE").unwrap();
+        let actual_definition = forth
+            .get_word_definition(&&Word::UserDefined("NEGATE".to_string()))
+            .unwrap();
 
-        assert_eq!(*actual_definition, Rc::new(expected_definition));
+        assert_eq!(*actual_definition, expected_definition);
     }
 
     #[test]
     fn can_execute_a_new_word_defined() {
         let mut forth = Forth::new(None);
         let word: Vec<ForthInstruction> = vec![
-            ForthInstruction::StartDefinition,                        // start
-            ForthInstruction::DefineWord(DefineWord::Name("NEGATE")), // word
+            ForthInstruction::StartDefinition, // start
+            ForthInstruction::DefineWord(DefineWord::Name("NEGATE".to_string())), // word
             ForthInstruction::Number(-1),
             ForthInstruction::Operator("*"),
             ForthInstruction::EndDefinition, // end
         ];
         let data: Vec<ForthInstruction> = vec![
             ForthInstruction::Number(-10),
-            ForthInstruction::DefineWord(DefineWord::Name("NEGATE")), // word
+            ForthInstruction::DefineWord(DefineWord::Name("NEGATE".to_string())), // word
         ];
         let expected_result = vec![10];
 
-        let _ = forth.process_data(word);
-        let _ = forth.process_data(data);
+        let _ = forth.process_data(&word);
+        let _ = forth.process_data(&data);
 
         assert_eq!(forth.stack.top(), Ok(expected_result.last().unwrap()));
     }
@@ -277,7 +284,7 @@ mod tests {
             ForthInstruction::EndDefinition, // end
         ];
 
-        let result = forth.process_data(data);
+        let result = forth.process_data(&data);
 
         assert_eq!(result, Err(ForthError::InvalidWord.into()));
     }
@@ -297,7 +304,7 @@ mod tests {
 
         let expected_result = vec![-1];
 
-        assert_eq!(forth.process_data(data), Ok(()));
+        assert_eq!(forth.process_data(&data), Ok(()));
         assert_eq!(forth.stack.size(), expected_result.len());
         assert_eq!(forth.stack.top(), Ok(expected_result.last().unwrap()));
     }

@@ -9,7 +9,7 @@ pub enum ForthInstruction<'a> {
     StackWord(&'a StackOperation),
     StartDefinition,
     EndDefinition,
-    DefineWord(DefineWord<'a>),
+    DefineWord(DefineWord),
     BooleanOperation(&'a BooleanOperation),
     LogicalOperation(&'a LogicalOperation),
 }
@@ -19,12 +19,12 @@ pub enum ForthData<'a> {
     Number(i16),
     Operator(&'a str),
     StackWord(&'a StackOperation),
-    DefineWord(DefineWord<'a>),
+    DefineWord(DefineWord),
     BooleanOperation(&'a BooleanOperation),
     LogicalOperation(&'a LogicalOperation),
 }
 
 #[derive(Debug, PartialEq)]
-pub enum DefineWord<'a> {
-    Name(&'a str),
+pub enum DefineWord {
+    Name(String),
 }
