@@ -28,8 +28,7 @@ impl Parser {
     pub fn parse_instructions<'a>(&self, input: &'a str) -> Vec<ForthInstruction<'a>> {
         let mut instructions = Vec::new();
         let tokens = self.tokenize(input);
-        println!("Tokens: {:?}", tokens);
-        println!("Tokens length: {:?}", tokens.len());
+        dbg!(&tokens);
         for token in tokens {
             self.parse_token(&token, &mut instructions)
         }
@@ -60,6 +59,7 @@ impl Parser {
                     tokens.push(&input[start..=i]);
                     i += 1;
                 }
+                in_quotes = false;
                 start = i;
             } else if chars[i].is_whitespace() && !in_quotes {
                 if start < i {
@@ -67,7 +67,17 @@ impl Parser {
                 }
                 start = i + 1;
                 i += 1;
-            } else {
+            } else if !in_quotes && matches!(chars[i], ':' | ';') {
+                println!("i: {}", i);
+                println!("chars[i]: {}", chars[i]);
+                if start < i {
+                    tokens.push(&input[start..i]);                
+                }
+                tokens.push(&input[i..=i]);
+                start = i + 1;
+                i += 1;
+            }
+             else {
                 i += 1;
             }
         }
@@ -111,9 +121,15 @@ impl Parser {
                 let quoted_string = &token[3..token.len() - 1];
                 instructions.push(ForthInstruction::OutputDotQuote(quoted_string));
             }
-            _ => instructions.push(ForthInstruction::DefineWord(DefineWord::Name(
-                token.to_string(),
-            ))),
+            _ if self.parse_word(token).is_some() => {
+                if let Some(word) = self.parse_word(token) {
+                    instructions.push(word);
+                }
+            }
+            _ => (),
+            // _ => instructions.push(ForthInstruction::DefineWord(DefineWord::Name(
+            //     token.to_string(),
+            // ))),
         }
     }
 
@@ -168,6 +184,15 @@ impl Parser {
             _ if token.eq_ignore_ascii_case("over") => Some(ForthInstruction::StackWord(&OVER)),
             _ if token.eq_ignore_ascii_case("rot") => Some(ForthInstruction::StackWord(&ROT)),
             _ => None,
+        }
+    }
+
+    fn parse_word<'a>(&self, token: &'a str) -> Option<ForthInstruction<'a>> {
+        match token {
+            _ if token.eq_ignore_ascii_case("if") => Some(ForthInstruction::DefineWord(DefineWord::If)),
+            _ if token.eq_ignore_ascii_case("else") => Some(ForthInstruction::DefineWord(DefineWord::Else)),
+            _ if token.eq_ignore_ascii_case("then") => Some(ForthInstruction::DefineWord(DefineWord::Then)),
+            _ => Some(ForthInstruction::DefineWord(DefineWord::Name(token.to_string()))),
         }
     }
 }
@@ -304,6 +329,29 @@ mod tests {
         ];
 
         let result = parser.parse_instructions(input);
+
+        assert_eq!(result, expected_result);
+    }
+
+    #[test]
+    fn can_parse_definition_with_conditionals() {
+        let parser = Parser::new();
+        let input = ": is-negative? 0 < IF .\" Is negative\" ELSE .\" Is positive\" then ;";
+        let expected_result = vec![
+            ForthInstruction::StartDefinition,
+            ForthInstruction::DefineWord(DefineWord::Name("is-negative?".to_string())),
+            ForthInstruction::Number(0),
+            ForthInstruction::LogicalOperation(&LogicalOperation::LessThan),
+            ForthInstruction::DefineWord(DefineWord::If),
+            ForthInstruction::OutputDotQuote("Is negative"),
+            ForthInstruction::DefineWord(DefineWord::Else),
+            ForthInstruction::OutputDotQuote("Is positive"),
+            ForthInstruction::DefineWord(DefineWord::Then),
+            ForthInstruction::EndDefinition,
+        ];
+        let result = parser.parse_instructions(input);
+        dbg!(&result);
+        dbg!(&expected_result);
 
         assert_eq!(result, expected_result);
     }

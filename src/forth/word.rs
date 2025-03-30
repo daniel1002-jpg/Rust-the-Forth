@@ -204,7 +204,6 @@ impl<'a> WordManager<'a> {
                     ForthData::DefineWord(DefineWord::Then) => {
                         i += 1;
                     }
-                    _ => {}
                 }
                 i += 1;
             }
