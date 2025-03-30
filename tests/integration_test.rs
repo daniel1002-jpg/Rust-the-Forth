@@ -9,10 +9,11 @@ use rust_forth::{
     },
     stack::stack_operations::StackOperation,
 };
+use std::io::Sink;
 
 #[test]
 fn can_define_new_word_that_use_boolean_operations() {
-    let mut forth = Forth::new(None);
+    let mut forth: Forth<'_, Sink> = Forth::new(None, None);
     let definition = vec![
         ForthInstruction::StartDefinition,
         ForthInstruction::DefineWord(DefineWord::Name("IS-POSITIVE".to_string())),
@@ -33,7 +34,7 @@ fn can_define_new_word_that_use_boolean_operations() {
 
 #[test]
 fn can_execute_a_simple_word() {
-    let mut forth = Forth::new(None);
+    let mut forth: Forth<'_, Sink> = Forth::new(None, None);
     let definition = vec![
         ForthInstruction::StartDefinition,
         ForthInstruction::DefineWord(DefineWord::Name("DOUBLE".to_string())),
@@ -55,7 +56,7 @@ fn can_execute_a_simple_word() {
 
 #[test]
 fn can_define_nested_words() {
-    let mut forth = Forth::new(None);
+    let mut forth: Forth<'_, Sink> = Forth::new(None, None);
     let double_defintion = vec![
         ForthInstruction::StartDefinition,
         ForthInstruction::DefineWord(DefineWord::Name("DOUBLE".to_string())),
@@ -85,7 +86,7 @@ fn can_define_nested_words() {
 
 #[test]
 fn can_execute_arithmetic_operations() {
-    let mut forth = Forth::new(None);
+    let mut forth: Forth<'_, Sink> = Forth::new(None, None);
     let operations = vec![
         ForthInstruction::Number(5),
         ForthInstruction::Number(3),
@@ -102,7 +103,7 @@ fn can_execute_arithmetic_operations() {
 
 #[test]
 fn can_execute_logical_operations() {
-    let mut forth = Forth::new(None);
+    let mut forth: Forth<'_, Sink> = Forth::new(None, None);
     let operations = vec![
         ForthInstruction::Number(5),
         ForthInstruction::Number(3),
@@ -119,7 +120,7 @@ fn can_execute_logical_operations() {
 
 #[test]
 fn cannot_execute_unknown_word() {
-    let mut forth = Forth::new(None);
+    let mut forth: Forth<'_, Sink> = Forth::new(None, None);
     let unknown_word = vec![ForthInstruction::DefineWord(DefineWord::Name(
         "UNKNOWN".to_string(),
     ))];

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::io::Write;
 
 use crate::calculator::calculator::Calculator;
 use crate::errors::Error;
@@ -60,15 +61,20 @@ impl<'a> WordManager<'a> {
             ForthInstruction::LogicalOperation(logical_operation) => {
                 Ok(ForthData::LogicalOperation(logical_operation))
             }
+            ForthInstruction::OutputDot => Ok(ForthData::OutputDot),
+            ForthInstruction::OutpuEmit => Ok(ForthData::OutpuEmit),
+            ForthInstruction::OutputCR => Ok(ForthData::OutputCR),
+            ForthInstruction::OutputDotQuote(string) => Ok(ForthData::OutputDotQuote(string)),
             _ => Err(ForthError::InvalidWord.into()),
         }
     }
 
-    pub fn execute_word(
+    pub fn execute_word<W: Write>(
         &mut self,
         stack: &mut Stack,
         calculator: &Calculator,
         boolean_manager: &mut BooleanOperationManager,
+        mut writer: Option<&mut W>,
         word_name: &str,
     ) -> Result<(), Error> {
         let mut execution_stack = vec![Word::UserDefined(word_name.to_string())];
@@ -76,7 +82,6 @@ impl<'a> WordManager<'a> {
         while let Some(current_word) = execution_stack.pop() {
             let instructions = match self.words.get(&current_word) {
                 Some(definition) => definition,
-                // None => println!("{} {}", word_name, Error::ForthError::UnknownWord),
                 None => return Err(ForthError::UnknownWord.into()),
             };
 
@@ -117,6 +122,38 @@ impl<'a> WordManager<'a> {
                         );
                         stack.push(result)?;
                     }
+                    ForthData::OutputDot => {
+                        if let Ok(top) = stack.drop() {
+                            if let Some(ref mut writer) = writer {
+                                println!("{:?}", top);
+                                let _ = write!(writer, "{} ", top);
+                                let _ = writer.flush();
+                            }
+                        }
+                    }
+                    ForthData::OutputCR => {
+                        if let Some(ref mut writer) = writer {
+                            let _ = writeln!(writer);
+                            let _ = writer.flush();
+                        }
+                    }
+                    ForthData::OutpuEmit => {
+                        if let Ok(top) = stack.drop() {
+                            if let Ok(ascii_char) = u8::try_from(top) {
+                                if let Some(ref mut writer) = writer {
+                                    println!("{:?}", ascii_char);
+                                    let _ = write!(writer, "{} ", ascii_char as char);
+                                    let _ = writer.flush();
+                                }
+                            }
+                        }
+                    }
+                    ForthData::OutputDotQuote(string) => {
+                        if let Some(ref mut writer) = writer {
+                            let _ = write!(writer, "{} ", string);
+                            let _ = writer.flush();
+                        }
+                    }
                 }
             }
         }
@@ -143,6 +180,9 @@ fn find_end_definition(body: &[ForthInstruction<'_>]) -> Option<usize> {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Sink;
+    use std::io::Write;
+
     use super::*;
     use crate::forth::intructions::ForthInstruction;
     use crate::stack::stack::Stack;
@@ -184,7 +224,8 @@ mod tests {
 
         let _ = word_manager.define_new_word(Word::UserDefined("NEGATE".to_string()), &word);
         let _ = stack.push(-10);
-        let _ = word_manager.execute_word(stack, &calculator, boolean_manager, "NEGATE");
+        let _ =
+            word_manager.execute_word::<Sink>(stack, &calculator, boolean_manager, None, "NEGATE");
 
         assert_eq!(stack.top(), Ok(expected_result.last().unwrap()));
     }
@@ -202,8 +243,46 @@ mod tests {
         ];
         let _ = word_manager.define_new_word(Word::UserDefined("NEGATE".to_string()), &word);
 
-        let result = word_manager.execute_word(stack, &calculator, boolean_manager, "ABS");
+        let result =
+            word_manager.execute_word::<Sink>(stack, &calculator, boolean_manager, None, "ABS");
 
         assert_eq!(result, Err(ForthError::UnknownWord.into()));
+    }
+
+    #[test]
+    fn can_define_word_that_generate_output() {
+        let mut word_manager = WordManager::new();
+        let word: Vec<ForthInstruction> = vec![
+            ForthInstruction::OutpuEmit,
+            ForthInstruction::EndDefinition, // end
+        ];
+        let expected_result = vec![ForthData::OutpuEmit];
+
+        let _ = word_manager.define_new_word(Word::UserDefined("TO-ASCCI".to_string()), &word);
+        let result = word_manager.get_word_definition(&Word::UserDefined("TO-ASCCI".to_string()));
+
+        assert_eq!(result, Some(&expected_result));
+    }
+
+    #[test]
+    fn can_execute_word_that_generates_output() {
+        let mut word_manager = WordManager::new();
+        let stack: &mut Stack = &mut Stack::new(None);
+        let calculator = Calculator::new();
+        let boolean_manager: &mut BooleanOperationManager = &mut BooleanOperationManager::new();
+        let mut output = Vec::new();
+        let writer: Option<&mut Vec<u8>> = Some(&mut output);
+        let word: Vec<ForthInstruction> = vec![
+            ForthInstruction::OutputDotQuote("Hello"),
+            ForthInstruction::EndDefinition, // end
+        ];
+        let expected_result = "Hello ".to_string();
+
+        let _ = word_manager.define_new_word(Word::UserDefined("GREETING".to_string()), &word);
+        let _ = word_manager.execute_word(stack, &calculator, boolean_manager, writer, "GREETING");
+
+        let result = String::from_utf8(output).unwrap();
+
+        assert_eq!(result, expected_result);
     }
 }

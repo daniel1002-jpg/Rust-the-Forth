@@ -27,11 +27,54 @@ impl Parser {
 
     pub fn parse_instructions<'a>(&self, input: &'a str) -> Vec<ForthInstruction<'a>> {
         let mut instructions = Vec::new();
-        let tokens: Vec<_> = input.split_whitespace().collect();
+        let tokens = self.tokenize(input);
+        println!("Tokens: {:?}", tokens);
+        println!("Tokens length: {:?}", tokens.len());
         for token in tokens {
-            self.parse_token(token, &mut instructions)
+            self.parse_token(&token, &mut instructions)
         }
         instructions
+    }
+
+    fn tokenize<'a>(&self, input: &'a str) -> Vec<&'a str> {
+        let mut tokens = Vec::new();
+        let mut in_quotes = false;
+        let mut start = 0;
+        let chars: Vec<char> = input.chars().collect();
+
+        let mut i = 0;
+        while i < chars.len() {
+            if chars[i] == '.' && input[i..].starts_with(".\" ") {
+                if start < i {
+                    tokens.push(&input[start..i]);
+                }
+                start = i;
+                i += 2;
+                in_quotes = true;
+
+                while i < chars.len() && chars[i] != '"' {
+                    i += 1;
+                }
+
+                if i < chars.len() && chars[i] == '"' {
+                    tokens.push(&input[start..=i]);
+                    i += 1;
+                }
+                start = i;
+            } else if chars[i].is_whitespace() && !in_quotes {
+                if start < i {
+                    tokens.push(&input[start..i]);
+                }
+                start = i + 1;
+                i += 1;
+            } else {
+                i += 1;
+            }
+        }
+        if start < input.len() {
+            tokens.push(&input[start..]);
+        }
+        tokens
     }
 
     fn parse_token<'a>(&self, token: &'a str, instructions: &mut Vec<ForthInstruction<'a>>) {
@@ -59,6 +102,15 @@ impl Parser {
             }
             ":" => instructions.push(ForthInstruction::StartDefinition),
             ";" => instructions.push(ForthInstruction::EndDefinition),
+            "." => instructions.push(ForthInstruction::OutputDot),
+            _ if token.eq_ignore_ascii_case("emit") => {
+                instructions.push(ForthInstruction::OutpuEmit)
+            }
+            _ if token.eq_ignore_ascii_case("cr") => instructions.push(ForthInstruction::OutputCR),
+            _ if token.starts_with('.') && token.ends_with('"') => {
+                let quoted_string = &token[3..token.len() - 1];
+                instructions.push(ForthInstruction::OutputDotQuote(quoted_string));
+            }
             _ => instructions.push(ForthInstruction::DefineWord(DefineWord::Name(
                 token.to_string(),
             ))),
@@ -82,18 +134,28 @@ impl Parser {
 
     fn parse_logical_operation<'a>(&self, token: &'a str) -> Option<ForthInstruction<'a>> {
         match token {
-            _ if token.eq_ignore_ascii_case("<") => Some(ForthInstruction::LogicalOperation(&LESS_THAN)),
-            _ if token.eq_ignore_ascii_case(">") => Some(ForthInstruction::LogicalOperation(&GREATER_THAN)),
-            _ if token.eq_ignore_ascii_case("=") => Some(ForthInstruction::LogicalOperation(&EQUAL)),
+            _ if token.eq_ignore_ascii_case("<") => {
+                Some(ForthInstruction::LogicalOperation(&LESS_THAN))
+            }
+            _ if token.eq_ignore_ascii_case(">") => {
+                Some(ForthInstruction::LogicalOperation(&GREATER_THAN))
+            }
+            _ if token.eq_ignore_ascii_case("=") => {
+                Some(ForthInstruction::LogicalOperation(&EQUAL))
+            }
             _ => None,
         }
     }
 
     fn parse_boolean_operation<'a>(&self, token: &'a str) -> Option<ForthInstruction<'a>> {
         match token {
-            _ if token.eq_ignore_ascii_case("and") => Some(ForthInstruction::BooleanOperation(&AND)),
+            _ if token.eq_ignore_ascii_case("and") => {
+                Some(ForthInstruction::BooleanOperation(&AND))
+            }
             _ if token.eq_ignore_ascii_case("or") => Some(ForthInstruction::BooleanOperation(&OR)),
-            _ if token.eq_ignore_ascii_case("not") => Some(ForthInstruction::BooleanOperation(&NOT)),
+            _ if token.eq_ignore_ascii_case("not") => {
+                Some(ForthInstruction::BooleanOperation(&NOT))
+            }
             _ => None,
         }
     }
@@ -223,6 +285,22 @@ mod tests {
             ForthInstruction::BooleanOperation(&BooleanOperation::And),
             ForthInstruction::StackWord(&StackOperation::Dup),
             ForthInstruction::StackWord(&StackOperation::Drop),
+        ];
+
+        let result = parser.parse_instructions(input);
+
+        assert_eq!(result, expected_result);
+    }
+
+    #[test]
+    fn can_parse_ouput_generator_intruction() {
+        let parser = Parser::new();
+        let input = ". emit CR .\" Hello, World!\"";
+        let expected_result = vec![
+            ForthInstruction::OutputDot,
+            ForthInstruction::OutpuEmit,
+            ForthInstruction::OutputCR,
+            ForthInstruction::OutputDotQuote("Hello, World!"),
         ];
 
         let result = parser.parse_instructions(input);

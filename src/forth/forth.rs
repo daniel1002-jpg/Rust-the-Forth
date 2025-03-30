@@ -1,5 +1,3 @@
-// use std::rc::Rc;
-
 use super::boolean_operations::BooleanOperationManager;
 use super::forth_errors::ForthError;
 use super::intructions::*;
@@ -8,21 +6,24 @@ use crate::calculator::calculator::Calculator;
 use crate::errors::Error;
 use crate::stack::stack::Stack;
 use crate::stack::stack_operations::{StackOperation, execute_stack_operation};
+use std::io::Write;
 
-pub struct Forth<'a> {
+pub struct Forth<'a, W: Write> {
     stack: Stack,
     calculator: Calculator,
     word_manager: WordManager<'a>,
     boolean_manager: BooleanOperationManager,
+    writer: Option<W>,
 }
 
-impl<'a> Forth<'a> {
-    pub fn new(stack_capacity: Option<usize>) -> Self {
+impl<'a, W: Write> Forth<'a, W> {
+    pub fn new(stack_capacity: Option<usize>, writer: Option<W>) -> Self {
         Forth {
             stack: Stack::new(stack_capacity),
             calculator: Calculator::new(),
             word_manager: WordManager::new(),
             boolean_manager: BooleanOperationManager::new(),
+            writer,
         }
     }
 
@@ -89,6 +90,38 @@ impl<'a> Forth<'a> {
                     );
                     self.stack.push(result)?;
                 }
+                ForthInstruction::OutputDot => {
+                    if let Ok(top) = self.stack.drop() {
+                        if let Some(writer) = &mut self.writer {
+                            println!("{:?}", top);
+                            let _ = write!(writer, "{} ", top);
+                            let _ = writer.flush();
+                        }
+                    }
+                }
+                ForthInstruction::OutputCR => {
+                    if let Some(writer) = &mut self.writer {
+                        let _ = writeln!(writer);
+                        let _ = writer.flush();
+                    }
+                }
+                ForthInstruction::OutpuEmit => {
+                    if let Ok(top) = self.stack.drop() {
+                        if let Ok(ascii_char) = u8::try_from(top) {
+                            if let Some(writer) = &mut self.writer {
+                                println!("{:?}", ascii_char);
+                                let _ = write!(writer, "{} ", ascii_char as char);
+                                let _ = writer.flush();
+                            }
+                        }
+                    }
+                }
+                ForthInstruction::OutputDotQuote(string) => {
+                    if let Some(writer) = &mut self.writer {
+                        let _ = write!(writer, "{} ", string);
+                        let _ = writer.flush();
+                    }
+                }
                 _ => {}
             }
             println!("{:?}", self.stack);
@@ -121,10 +154,11 @@ impl<'a> Forth<'a> {
     }
 
     fn execute_new_word(&mut self, word_name: &str) -> Result<(), Error> {
-        self.word_manager.execute_word(
+        self.word_manager.execute_word::<W>(
             &mut self.stack,
             &self.calculator,
             &mut self.boolean_manager,
+            self.writer.as_mut(),
             word_name,
         )?;
         Ok(())
@@ -140,16 +174,15 @@ impl<'a> Forth<'a> {
 }
 
 mod tests {
-    // use std::rc::Rc;
-
     use crate::forth::boolean_operations::{BooleanOperation, LogicalOperation};
     use crate::forth::forth::{DefineWord, Forth, ForthData, ForthError, ForthInstruction};
     use crate::forth::word::Word;
     use crate::stack::stack_operations::StackOperation;
+    use std::io::Sink;
 
     #[test]
     fn can_create_forth_with_stack_and_calculator_corectly() {
-        let forth = Forth::new(None);
+        let forth: Forth<'_, Sink> = Forth::new(None, None);
 
         assert!(forth.stack.is_empty());
         assert_eq!(forth.calculator.calculate(2, 4, "+"), Ok(6));
@@ -157,7 +190,7 @@ mod tests {
 
     #[test]
     fn can_push_element_into_stack() {
-        let mut forth = Forth::new(None);
+        let mut forth: Forth<'_, Sink> = Forth::new(None, None);
         let elements = vec![1, 2, -3];
 
         for element in &elements {
@@ -170,7 +203,7 @@ mod tests {
 
     #[test]
     fn can_be_added_correctly_using_the_stack() {
-        let mut forth = Forth::new(None);
+        let mut forth: Forth<'_, Sink> = Forth::new(None, None);
         let _ = forth.push(2);
         let _ = forth.push(4);
 
@@ -179,7 +212,7 @@ mod tests {
 
     #[test]
     fn can_be_divided_correctly_using_the_stack() {
-        let mut forth = Forth::new(None);
+        let mut forth: Forth<'_, Sink> = Forth::new(None, None);
         let _ = forth.push(4);
         let _ = forth.push(2);
 
@@ -188,7 +221,7 @@ mod tests {
 
     #[test]
     fn can_perform_complex_operations_correctly() {
-        let mut forth = Forth::new(None);
+        let mut forth: Forth<'_, Sink> = Forth::new(None, None);
         let operation: Vec<ForthInstruction> = vec![
             ForthInstruction::Number(2),
             ForthInstruction::Number(4),
@@ -211,7 +244,7 @@ mod tests {
 
     #[test]
     fn stack_can_be_manipulated_correctly() {
-        let mut forth = Forth::new(None);
+        let mut forth: Forth<'_, Sink> = Forth::new(None, None);
         let data: Vec<ForthInstruction> = vec![
             ForthInstruction::Number(2),
             ForthInstruction::Number(4),
@@ -231,7 +264,7 @@ mod tests {
 
     #[test]
     fn can_define_new_words() {
-        let mut forth = Forth::new(None);
+        let mut forth: Forth<'_, Sink> = Forth::new(None, None);
         let data: Vec<ForthInstruction> = vec![
             ForthInstruction::StartDefinition, // start
             ForthInstruction::DefineWord(DefineWord::Name("NEGATE".to_string())), // word
@@ -253,7 +286,7 @@ mod tests {
 
     #[test]
     fn can_execute_a_new_word_defined() {
-        let mut forth = Forth::new(None);
+        let mut forth: Forth<'_, Sink> = Forth::new(None, None);
         let word: Vec<ForthInstruction> = vec![
             ForthInstruction::StartDefinition, // start
             ForthInstruction::DefineWord(DefineWord::Name("NEGATE".to_string())), // word
@@ -275,7 +308,7 @@ mod tests {
 
     #[test]
     fn cannot_define_invalid_word() {
-        let mut forth = Forth::new(None);
+        let mut forth: Forth<'_, Sink> = Forth::new(None, None);
         let data: Vec<ForthInstruction> = vec![
             ForthInstruction::StartDefinition, // start
             ForthInstruction::Number(11),
@@ -291,7 +324,7 @@ mod tests {
 
     #[test]
     fn can_execute_boolean_operations_correctly() {
-        let mut forth = Forth::new(None);
+        let mut forth: Forth<'_, Sink> = Forth::new(None, None);
         let data = vec![
             ForthInstruction::Number(3),
             ForthInstruction::Number(4),
@@ -307,5 +340,27 @@ mod tests {
         assert_eq!(forth.process_data(&data), Ok(()));
         assert_eq!(forth.stack.size(), expected_result.len());
         assert_eq!(forth.stack.top(), Ok(expected_result.last().unwrap()));
+    }
+
+    #[test]
+    fn can_execute_output_instructions_correctly() {
+        let output = Vec::new();
+        let mut forth = Forth::new(None, Some(output));
+        let instruction = vec![
+            ForthInstruction::Number(3),
+            ForthInstruction::OutputDot,
+            ForthInstruction::Number(65),
+            ForthInstruction::OutpuEmit,
+            ForthInstruction::Number(4),
+            ForthInstruction::OutputCR,
+            ForthInstruction::OutputDotQuote("word"),
+        ];
+        let expected_result = "3 A \nword ";
+
+        let _ = forth.process_data(&instruction);
+
+        let result = String::from_utf8(forth.writer.unwrap()).unwrap();
+
+        assert_eq!(result, expected_result);
     }
 }

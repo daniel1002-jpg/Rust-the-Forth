@@ -12,6 +12,10 @@ pub enum ForthInstruction<'a> {
     DefineWord(DefineWord),
     BooleanOperation(&'a BooleanOperation),
     LogicalOperation(&'a LogicalOperation),
+    OutputDot,
+    OutpuEmit,
+    OutputCR,
+    OutputDotQuote(&'a str),
 }
 
 #[derive(Debug, PartialEq)]
@@ -22,6 +26,10 @@ pub enum ForthData<'a> {
     DefineWord(DefineWord),
     BooleanOperation(&'a BooleanOperation),
     LogicalOperation(&'a LogicalOperation),
+    OutputDot,
+    OutpuEmit,
+    OutputCR,
+    OutputDotQuote(&'a str),
 }
 
 #[derive(Debug, PartialEq)]
