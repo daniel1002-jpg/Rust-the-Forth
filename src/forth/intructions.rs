@@ -35,4 +35,7 @@ pub enum ForthData<'a> {
 #[derive(Debug, PartialEq)]
 pub enum DefineWord {
     Name(String),
+    If,
+    Else,
+    Then,
 }
