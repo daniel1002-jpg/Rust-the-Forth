@@ -8,6 +8,8 @@ pub enum Error {
     StackError(StackError),
     CalculatorError(CalculatorError),
     ForthError(ForthError),
+    InvalidStackSize,
+    MissingPathError,
 }
 
 impl fmt::Display for Error {
@@ -16,6 +18,8 @@ impl fmt::Display for Error {
             Error::StackError(ref error) => write!(f, "{}", error),
             Error::CalculatorError(ref error) => write!(f, "{}", error),
             Error::ForthError(ref error) => write!(f, "{}", error),
+            Error::InvalidStackSize => write!(f, "invalid stack size"),
+            Error::MissingPathError => write!(f, "path to file not received"),
         }
     }
 }

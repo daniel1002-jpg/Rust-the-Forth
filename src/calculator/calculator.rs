@@ -1,9 +1,26 @@
 use super::calculator_errors::CalculatorError;
 use crate::errors::Error;
 
+/// A simple calculator that can perform basic arithmetic operations
+/// such as addition, subtraction, multiplication, and division.
+/// 
 pub struct Calculator {}
 
+impl Default for Calculator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Calculator {
+    /// Creates a new instance of the Calculator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rust_forth::calculator::Calculator;
+    /// let calculator = Calculator::new();
+    /// ```
     pub fn new() -> Self {
         Calculator {}
     }
@@ -27,6 +44,19 @@ impl Calculator {
         }
     }
 
+    /// Performs the specified arithmetic operation on two numbers.
+    ///
+    /// # Arguments
+    ///
+    /// * `n1` - The first number.
+    /// * `n2` - The second number.
+    /// * `operation` - The operation to perform. It can be one of the following:
+    ///   - "+" for addition
+    ///   - "-" for subtraction
+    ///   - "*" for multiplication
+    ///   - "/" for division
+    ///
+    /// Returns the result of the operation as an `i16` value.   
     pub fn calculate(&self, n1: i16, n2: i16, operation: &str) -> Result<i16, Error> {
         match operation {
             "+" => Ok(self.add(n1, n2)),
@@ -39,7 +69,11 @@ impl Calculator {
 }
 
 mod tests {
-    use super::*;
+    #[allow(unused_imports)]
+    use crate::calculator::{
+        calculator::Calculator,
+        calculator_errors::CalculatorError,
+    };
 
     #[test]
     fn a_calculator_can_add_correctly() {

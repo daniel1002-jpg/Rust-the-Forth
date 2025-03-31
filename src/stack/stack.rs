@@ -148,6 +148,10 @@ impl Stack {
         let _ = self.push(rotate);
         Ok(())
     }
+
+    pub fn get_stack_content(&self) -> &Vec<i16> {
+        &self.data
+    }
 }
 
 #[cfg(test)]

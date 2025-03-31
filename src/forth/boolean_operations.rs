@@ -15,14 +15,27 @@ pub enum LogicalOperation {
     Equal,
 }
 
+/// A struct to manage boolean operations.
+/// It provides methods to execute boolean and logical operations.
 #[derive(Debug, PartialEq)]
 pub struct BooleanOperationManager {}
 
+impl Default for BooleanOperationManager {
+    fn default() -> Self {
+        BooleanOperationManager::new()
+    }
+}
+
 impl BooleanOperationManager {
+    /// Creates a new instance of the BooleanOperationManager.
     pub fn new() -> Self {
         BooleanOperationManager {}
     }
 
+    /// Executes a boolean operation on two operands.
+    /// The second operand is optional and defaults to 0 if not provided.
+    /// Returns the result of the operation as an `i16` value.
+    /// The result is `TRUE` if the operation is successful, otherwise `FALSE`.
     pub fn execute_boolean_operation(
         &mut self,
         op: &BooleanOperation,
@@ -54,6 +67,13 @@ impl BooleanOperationManager {
         }
     }
 
+    /// Executes a logical operation on two operands.
+    /// Returns the result of the operation as an `i16` value.
+    /// The result is `TRUE` if the operation is successful, otherwise `FALSE`.
+    /// The operations supported are:
+    /// - LessThan (<)
+    /// - GreaterThan (>)
+    /// - Equal (=)  
     pub fn execute_logical_operations(
         &mut self,
         op: &LogicalOperation,

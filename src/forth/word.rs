@@ -10,17 +10,30 @@ use crate::stack::stack_operations::execute_stack_operation;
 
 use super::boolean_operations::{BooleanOperationManager, TRUE};
 
+/// Enum that represents a word in the Forth language.
+/// It can be either a predefined word (like "DUP") or a user-defined word (like "MY_WORD").
+/// The predefined words are represented as static strings, while the user-defined words are
+/// represented as owned strings.
+/// The `Word` enum is used to identify the type of word being defined or executed.
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum Word {
     Predifined(&'static str),
     UserDefined(String),
 }
 
-pub struct WordManager<'a> {
-    words: HashMap<Word, Vec<ForthData<'a>>>,
+/// Struct that represents a word manager in the Forth interpreter
+/// 
+pub struct WordManager {
+    words: HashMap<Word, Vec<ForthData>>,
 }
 
-impl<'a> WordManager<'a> {
+impl Default for WordManager {
+    fn default() -> Self {
+        WordManager::new()
+    }
+}
+
+impl WordManager {
     pub fn new() -> Self {
         WordManager {
             words: HashMap::new(),
@@ -30,11 +43,12 @@ impl<'a> WordManager<'a> {
     pub fn define_new_word(
         &mut self,
         name: Word,
-        body: &'a [ForthInstruction<'a>],
+        body: Vec<ForthInstruction>,
     ) -> Result<(), Error> {
-        let end_index = find_end_definition(body).ok_or(ForthError::InvalidWord)?;
-        let word_definition = &body[..end_index];
-        let mut definition: Vec<ForthData<'a>> = Vec::new();
+        let end_index = find_end_definition(&body).ok_or(ForthError::InvalidWord)?;
+        let word_definition = body.into_iter().take(end_index).collect::<Vec<_>>();
+        // let word_definition = &body[..end_index];
+        let mut definition: Vec<ForthData> = Vec::new();
 
         for element in word_definition {
             definition.push(self.convert_to_word_defintion(element)?);
@@ -44,13 +58,10 @@ impl<'a> WordManager<'a> {
         Ok(())
     }
 
-    fn convert_to_word_defintion(
-        &self,
-        instruction: &'a ForthInstruction<'a>,
-    ) -> Result<ForthData<'a>, Error> {
+    fn convert_to_word_defintion(&self, instruction: ForthInstruction) -> Result<ForthData, Error> {
         match instruction {
-            ForthInstruction::Number(number) => Ok(ForthData::Number(*number)),
-            ForthInstruction::Operator(operator) => Ok(ForthData::Operator(operator)),
+            ForthInstruction::Number(number) => Ok(ForthData::Number(number)),
+            ForthInstruction::Operator(operator) => Ok(ForthData::Operator(String::from(operator))),
             ForthInstruction::StackWord(stack_word) => Ok(ForthData::StackWord(stack_word)),
             ForthInstruction::DefineWord(define_word) => match define_word {
                 DefineWord::Name(name) => {
@@ -69,7 +80,9 @@ impl<'a> WordManager<'a> {
             ForthInstruction::OutputDot => Ok(ForthData::OutputDot),
             ForthInstruction::OutpuEmit => Ok(ForthData::OutpuEmit),
             ForthInstruction::OutputCR => Ok(ForthData::OutputCR),
-            ForthInstruction::OutputDotQuote(string) => Ok(ForthData::OutputDotQuote(string)),
+            ForthInstruction::OutputDotQuote(string) => {
+                Ok(ForthData::OutputDotQuote(String::from(string)))
+            }
             _ => Err(ForthError::InvalidWord.into()),
         }
     }
@@ -181,7 +194,7 @@ impl<'a> WordManager<'a> {
                                 match &instructions[i] {
                                     ForthData::DefineWord(DefineWord::If) => skip += 1,
                                     ForthData::DefineWord(DefineWord::Then) => skip -= 1,
-                                    ForthData::DefineWord(DefineWord::Else) if skip == 1 => break, 
+                                    ForthData::DefineWord(DefineWord::Else) if skip == 1 => break,
                                     _ => {}
                                 }
                             }
@@ -215,7 +228,7 @@ impl<'a> WordManager<'a> {
     //     let top = stack.drop();
     //     if let Ok(value) = top {
     //         if value == TRUE {
-    //             // Función que ejecutará el resto de la definición 
+    //             // Función que ejecutará el resto de la definición
     //             self.execute_definition(instructions, stack);
     //         } else {
     //             let else_index = self.find_index(instructions, DefineWord::Else);
@@ -240,7 +253,7 @@ impl<'a> WordManager<'a> {
     }
 }
 
-fn find_end_definition(body: &[ForthInstruction<'_>]) -> Option<usize> {
+fn find_end_definition(body: &Vec<ForthInstruction>) -> Option<usize> {
     for (index, element) in body.iter().enumerate() {
         if let ForthInstruction::EndDefinition = element {
             return Some(index);
@@ -252,7 +265,7 @@ fn find_end_definition(body: &[ForthInstruction<'_>]) -> Option<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::forth::boolean_operations::{LogicalOperation, FALSE};
+    use crate::forth::boolean_operations::{FALSE, LogicalOperation};
     use crate::forth::intructions::ForthInstruction;
     use crate::stack::stack::Stack;
     use crate::stack::stack_errors::StackError;
@@ -264,13 +277,13 @@ mod tests {
         // let mut stack = Stack::new(None);
         let data: Vec<ForthInstruction> = vec![
             ForthInstruction::Number(-1),
-            ForthInstruction::Operator("*"),
+            ForthInstruction::Operator("*".to_string()),
             ForthInstruction::EndDefinition, // end
         ];
-        let expected_result = vec![ForthData::Number(-1), ForthData::Operator("*")];
+        let expected_result = vec![ForthData::Number(-1), ForthData::Operator("*".to_string())];
 
         let _ = word_manager
-            .define_new_word(Word::UserDefined("NEGATE".to_string()), &data)
+            .define_new_word(Word::UserDefined("NEGATE".to_string()), data)
             .unwrap();
 
         assert!(word_manager.is_word_defined(&Word::UserDefined("NEGATE".to_string())));
@@ -288,12 +301,12 @@ mod tests {
         let boolean_manager: &mut BooleanOperationManager = &mut BooleanOperationManager::new();
         let word: Vec<ForthInstruction> = vec![
             ForthInstruction::Number(-1),
-            ForthInstruction::Operator("*"),
+            ForthInstruction::Operator("*".to_string()),
             ForthInstruction::EndDefinition, // end
         ];
         let expected_result = vec![10];
 
-        let _ = word_manager.define_new_word(Word::UserDefined("NEGATE".to_string()), &word);
+        let _ = word_manager.define_new_word(Word::UserDefined("NEGATE".to_string()), word);
         let _ = stack.push(-10);
         let _ =
             word_manager.execute_word::<Sink>(stack, &calculator, boolean_manager, None, "NEGATE");
@@ -309,10 +322,10 @@ mod tests {
         let boolean_manager: &mut BooleanOperationManager = &mut BooleanOperationManager::new();
         let word: Vec<ForthInstruction> = vec![
             ForthInstruction::Number(-1),
-            ForthInstruction::Operator("*"),
+            ForthInstruction::Operator("*".to_string()),
             ForthInstruction::EndDefinition, // end
         ];
-        let _ = word_manager.define_new_word(Word::UserDefined("NEGATE".to_string()), &word);
+        let _ = word_manager.define_new_word(Word::UserDefined("NEGATE".to_string()), word);
 
         let result =
             word_manager.execute_word::<Sink>(stack, &calculator, boolean_manager, None, "ABS");
@@ -329,7 +342,7 @@ mod tests {
         ];
         let expected_result = vec![ForthData::OutpuEmit];
 
-        let _ = word_manager.define_new_word(Word::UserDefined("TO-ASCCI".to_string()), &word);
+        let _ = word_manager.define_new_word(Word::UserDefined("TO-ASCCI".to_string()), word);
         let result = word_manager.get_word_definition(&Word::UserDefined("TO-ASCCI".to_string()));
 
         assert_eq!(result, Some(&expected_result));
@@ -344,12 +357,12 @@ mod tests {
         let mut output = Vec::new();
         let writer: Option<&mut Vec<u8>> = Some(&mut output);
         let word: Vec<ForthInstruction> = vec![
-            ForthInstruction::OutputDotQuote("Hello"),
+            ForthInstruction::OutputDotQuote("Hello".to_string()),
             ForthInstruction::EndDefinition, // end
         ];
         let expected_result = "Hello ".to_string();
 
-        let _ = word_manager.define_new_word(Word::UserDefined("GREETING".to_string()), &word);
+        let _ = word_manager.define_new_word(Word::UserDefined("GREETING".to_string()), word);
         let _ = word_manager.execute_word(stack, &calculator, boolean_manager, writer, "GREETING");
 
         let result = String::from_utf8(output).unwrap();
@@ -362,21 +375,21 @@ mod tests {
         let mut word_manger = WordManager::new();
         let word = vec![
             ForthInstruction::Number(0),
-            ForthInstruction::LogicalOperation(&LogicalOperation::Equal),
+            ForthInstruction::LogicalOperation(LogicalOperation::Equal),
             ForthInstruction::DefineWord(DefineWord::If),
-            ForthInstruction::OutputDotQuote("Is Zero"),
+            ForthInstruction::OutputDotQuote("Is Zero".to_string()),
             ForthInstruction::DefineWord(DefineWord::Then),
             ForthInstruction::EndDefinition,
         ];
         let expected_result = vec![
             ForthData::Number(0),
-            ForthData::LogicalOperation(&LogicalOperation::Equal),
+            ForthData::LogicalOperation(LogicalOperation::Equal),
             ForthData::DefineWord(DefineWord::If),
-            ForthData::OutputDotQuote("Is Zero"),
+            ForthData::OutputDotQuote("Is Zero".to_string()),
             ForthData::DefineWord(DefineWord::Then),
         ];
 
-        let _ = word_manger.define_new_word(Word::UserDefined("is-zero?".to_string()), &word);
+        let _ = word_manger.define_new_word(Word::UserDefined("is-zero?".to_string()), word);
         let result = word_manger.get_word_definition(&Word::UserDefined("is-zero?".to_string()));
 
         assert_eq!(result, Some(&expected_result));
@@ -392,21 +405,21 @@ mod tests {
         let writer: Option<&mut Vec<u8>> = Some(&mut output);
         let word: Vec<ForthInstruction> = vec![
             ForthInstruction::Number(0),
-            ForthInstruction::LogicalOperation(&LogicalOperation::Equal),
+            ForthInstruction::LogicalOperation(LogicalOperation::Equal),
             ForthInstruction::DefineWord(DefineWord::If),
-            ForthInstruction::OutputDotQuote("Is Zero"),
+            ForthInstruction::OutputDotQuote("Is Zero".to_string()),
             ForthInstruction::DefineWord(DefineWord::Else),
-            ForthInstruction::OutputDotQuote("Is Not Zero"),
+            ForthInstruction::OutputDotQuote("Is Not Zero".to_string()),
             ForthInstruction::DefineWord(DefineWord::Then),
             ForthInstruction::EndDefinition,
         ];
         let expected_result = "Is Not Zero ".to_string();
 
-        let _ = word_manager.define_new_word(Word::UserDefined("is-zero?".to_string()), &word);
+        let _ = word_manager.define_new_word(Word::UserDefined("is-zero?".to_string()), word);
         let _ = stack.push(4);
         let _ = word_manager.execute_word(stack, &calculator, boolean_manager, writer, "is-zero?");
         let result = String::from_utf8(output).unwrap();
-        
+
         assert_eq!(result, expected_result);
     }
 }
