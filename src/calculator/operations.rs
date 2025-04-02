@@ -3,7 +3,7 @@ use crate::errors::Error;
 
 /// A simple calculator that can perform basic arithmetic operations
 /// such as addition, subtraction, multiplication, and division.
-/// 
+///
 pub struct Calculator {}
 
 impl Default for Calculator {
@@ -18,7 +18,7 @@ impl Calculator {
     /// # Examples
     ///
     /// ```
-    /// use rust_forth::calculator::Calculator;
+    /// use rust_forth::calculator::operations::Calculator;
     /// let calculator = Calculator::new();
     /// ```
     pub fn new() -> Self {
@@ -70,10 +70,7 @@ impl Calculator {
 
 mod tests {
     #[allow(unused_imports)]
-    use crate::calculator::{
-        calculator::Calculator,
-        calculator_errors::CalculatorError,
-    };
+    use crate::calculator::{calculator_errors::CalculatorError, operations::Calculator};
 
     #[test]
     fn a_calculator_can_add_correctly() {

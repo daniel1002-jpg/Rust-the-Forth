@@ -4,10 +4,10 @@ pub mod forth;
 pub mod stack;
 
 pub use forth::boolean_operations::{BooleanOperation, LogicalOperation};
-pub use forth::forth::Forth;
+pub use forth::interpreter::Forth;
 pub use forth::intructions::ForthInstruction;
 use forth::parser::Parser;
-pub use stack::stack::Stack;
+pub use stack::core::Stack;
 
 use crate::errors::Error;
 use std::fs::File;

@@ -1,13 +1,11 @@
 use rust_forth::{
     Forth, ForthInstruction, LogicalOperation,
-    errors::Error,
     forth::{
         boolean_operations::TRUE,
-        forth_errors::ForthError::{self, UnknownWord},
+        forth_errors::ForthError,
         intructions::{DefineWord, ForthData},
         word::Word,
     },
-    stack::stack_operations::StackOperation,
 };
 use std::io::Sink;
 

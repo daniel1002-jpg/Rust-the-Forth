@@ -70,15 +70,6 @@ impl Parser {
     /// Returns a vector of tokens.
     /// # Arguments
     /// * `input` - A string containing the input to be tokenized.
-    /// # Examples
-    /// ```
-    /// use rust_forth::forth::parser::Parser;
-    /// let parser = Parser::new();
-    /// let input = String::from("1 2 +");
-    /// let expected_result = vec!["1", "2", "+"];
-    /// let result = parser.tokenize(input);
-    /// assert_eq!(result, expected_result);
-    /// ```
     fn tokenize(&self, input: &str) -> Vec<String> {
         let mut tokens = Vec::new();
         let mut in_quotes = false;
@@ -138,16 +129,6 @@ impl Parser {
     /// # Arguments
     /// * `token` - A string containing the token to be parsed.
     /// * `instructions` - A mutable reference to a vector of Forth instructions where the parsed instruction will be added.
-    /// # Examples
-    /// ```
-    /// use rust_forth::forth::parser::Parser;
-    /// use rust_forth::forth::intructions::ForthInstruction;
-    /// let parser = Parser::new();
-    /// let token = String::from("1");
-    /// let mut instructions = Vec::new();
-    /// parser.parse_token(token, &mut instructions);
-    /// assert_eq!(instructions, vec![ForthInstruction::Number(1)]);
-    /// ```
     fn parse_token(&self, token: String, instructions: &mut Vec<ForthInstruction>) {
         match token.as_str() {
             num if self.is_number(num.to_string()) => {
@@ -197,13 +178,6 @@ impl Parser {
     /// It checks if the token is a valid number, including negative numbers.
     /// # Arguments
     /// * `token` - A string containing the token to be checked.
-    /// # Examples
-    /// ```
-    /// use rust_forth::forth::parser::Parser;
-    /// let parser = Parser::new();
-    /// let token = String::from("123");
-    /// assert_eq!(parser.is_number(token), true);
-    /// ```
     fn is_number(&self, token: String) -> bool {
         if token.is_empty() {
             return false;
@@ -224,22 +198,10 @@ impl Parser {
         matches!(token.as_str(), "+" | "-" | "*" | "/")
     }
 
-
     /// Parses a token into a logical operation.
     /// It checks if the token is a logical operation and creates the corresponding Forth instruction.
     /// # Arguments
     /// * `token` - A string containing the token to be parsed.
-    /// # Examples
-    /// ```
-    /// use rust_forth::forth::parser::Parser;
-    /// use rust_forth::forth::intructions::ForthInstruction;
-    /// use rust_forth::forth::boolean_operations::LogicalOperation;
-    /// let parser = Parser::new();
-    /// let token = String::from("<");
-    /// let expected_result = Some(ForthInstruction::LogicalOperation(LogicalOperation::LessThan));
-    /// let result = parser.parse_logical_operation(&token);
-    /// assert_eq!(result, expected_result);
-    /// ```
     /// # Returns
     /// * `Some(ForthInstruction)` if the token is a logical operation.
     /// * `None` if the token is not a logical operation.
@@ -260,17 +222,6 @@ impl Parser {
     /// It checks if the token is a boolean operation and creates the corresponding Forth instruction.
     /// # Arguments
     /// * `token` - A string containing the token to be parsed.
-    /// # Examples
-    /// ```
-    /// use rust_forth::forth::parser::Parser;
-    /// use rust_forth::forth::intructions::ForthInstruction;
-    /// use rust_forth::forth::boolean_operations::BooleanOperation;
-    /// let parser = Parser::new();
-    /// let token = String::from("and");
-    /// let expected_result = Some(ForthInstruction::BooleanOperation(BooleanOperation::And));
-    /// let result = parser.parse_boolean_operation(&token);
-    /// assert_eq!(result, expected_result);
-    /// ```
     /// # Returns
     /// * `Some(ForthInstruction)` if the token is a boolean operation.
     /// * `None` if the token is not a boolean operation.
@@ -287,17 +238,6 @@ impl Parser {
     /// It checks if the token is a stack operation and creates the corresponding Forth instruction.
     /// # Arguments
     /// * `token` - A string containing the token to be parsed.
-    /// # Examples
-    /// ```
-    /// use rust_forth::forth::parser::Parser;
-    /// use rust_forth::forth::intructions::ForthInstruction;
-    /// use rust_forth::stack::stack_operations::StackOperation;
-    /// let parser = Parser::new();
-    /// let token = String::from("dup");
-    /// let expected_result = Some(ForthInstruction::StackWord(StackOperation::Dup));
-    /// let result = parser.parse_stack_operation(&token);
-    /// assert_eq!(result, expected_result);
-    /// ```
     /// # Returns
     /// * `Some(ForthInstruction)` if the token is a stack operation.
     /// * `None` if the token is not a stack operation.
@@ -316,17 +256,6 @@ impl Parser {
     /// It checks if the token is a word and creates the corresponding Forth instruction.
     /// # Arguments
     /// * `token` - A string containing the token to be parsed.
-    /// # Examples
-    /// ```
-    /// use rust_forth::forth::parser::Parser;
-    /// use rust_forth::forth::intructions::ForthInstruction;
-    /// use rust_forth::forth::intructions::DefineWord;
-    /// let parser = Parser::new();
-    /// let token = String::from("AWORD");
-    /// let expected_result = Some(ForthInstruction::DefineWord(DefineWord::Name("AWORD".to_string())));
-    /// let result = parser.parse_word(&token);
-    /// assert_eq!(result, expected_result);
-    /// ```
     /// # Returns
     /// * `Some(ForthInstruction)` if the token is a word.
     /// * `None` if the token is not a word.   

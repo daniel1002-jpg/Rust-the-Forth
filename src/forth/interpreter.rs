@@ -2,9 +2,9 @@ use super::boolean_operations::BooleanOperationManager;
 use super::forth_errors::ForthError;
 use super::intructions::*;
 use super::word::{Word, WordManager};
-use crate::calculator::calculator::Calculator;
+use crate::calculator::operations::Calculator;
 use crate::errors::Error;
-use crate::stack::stack::Stack;
+use crate::stack::core::Stack;
 use crate::stack::stack_operations::{StackOperation, execute_stack_operation};
 use std::io::Write;
 
@@ -16,7 +16,7 @@ use std::io::Write;
 ///
 /// # Examples
 /// ```
-/// use rust_forth::forth::Forth;
+/// use rust_forth::forth::interpreter::Forth;
 /// use std::io::Sink;
 /// let forth: Forth<Sink> = Forth::new(None, None);
 /// ```
@@ -36,12 +36,12 @@ pub struct Forth<W: Write> {
 
 impl<W: Write> Forth<W> {
     /// Creates a new instance of the Forth interpreter.
-    /// The `stack_capacity` parameter is optional and specifies the initial capacity of the stack. 
+    /// The `stack_capacity` parameter is optional and specifies the initial capacity of the stack.
     /// The `writer` parameter is also optional and allows for output to be directed to a specific writer.
     /// If no writer is provided, output will be directed to the standard output.
     /// # Examples
     /// ```
-    /// use rust_forth::forth::Forth;
+    /// use rust_forth::forth::interpreter::Forth;
     /// use std::io::Sink;
     /// let forth: Forth<Sink> = Forth::new(None, None);
     /// ```
@@ -232,7 +232,7 @@ impl<W: Write> Forth<W> {
     }
 
     /// Checks if a word is defined in the Forth interpreter.
-    fn is_word_defined(&self, word_name: &Word) -> bool {
+    pub fn is_word_defined(&self, word_name: &Word) -> bool {
         self.word_manager.is_word_defined(word_name)
     }
 
@@ -240,19 +240,36 @@ impl<W: Write> Forth<W> {
     /// This function takes a word name and returns its definition if it is defined in the word manager.
     /// # Arguments
     /// - `word_name`: The name of the word whose definition is to be retrieved.
-    /// 
+    ///
     /// Returns an `Option` containing a reference to the vector of Forth data representing the word's definition.
-    /// 
+    ///
     /// If the word is not defined, it returns `None`.
     /// # Examples
-    /// ```
-    /// use rust_forth::forth::Forth;
-    /// use rust_forth::forth::word::Word;
-    /// use std::io::Sink;
-    /// let forth: Forth<Sink> = Forth::new(None, None);
-    /// let word_name = Word::UserDefined("NEGATE".to_string());
-    /// let definition = forth.get_word_definition(&word_name);
-    /// assert!(definition.is_some());
+    /// ```rust
+    ///# use rust_forth::forth::interpreter::Forth;
+    ///# use rust_forth::forth::intructions::ForthInstruction;
+    ///# use rust_forth::forth::intructions::ForthData;
+    ///# use rust_forth::forth::intructions::DefineWord;
+    ///# use rust_forth::forth::word::Word;
+    ///# use std::io::Sink;
+    /// let mut forth: Forth<Sink> = Forth::new(None, None);
+    /// let data: Vec<ForthInstruction> = vec![
+    ///     ForthInstruction::StartDefinition, // start
+    ///     ForthInstruction::DefineWord(DefineWord::Name("NEGATE".to_string())), // word
+    ///     ForthInstruction::Number(-1),
+    ///     ForthInstruction::Operator("*".to_string()),
+    ///     ForthInstruction::EndDefinition, // end
+    /// ];
+    ///
+    /// let _ = forth.process_data(data);
+    ///
+    /// assert!(forth.is_word_defined(&Word::UserDefined("NEGATE".to_string())));
+    /// let expected_definition = vec![ForthData::Number(-1), ForthData::Operator("*".to_string())];
+    /// let actual_definition = forth
+    ///     .get_word_definition(&&Word::UserDefined("NEGATE".to_string()))
+    ///     .unwrap();
+    ///
+    /// assert_eq!(*actual_definition, expected_definition);
     /// ```
     pub fn get_word_definition(&self, word_name: &Word) -> Option<&Vec<ForthData>> {
         self.word_manager.get_word_definition(word_name)
@@ -262,9 +279,9 @@ impl<W: Write> Forth<W> {
     /// This function returns a reference to the vector of elements currently in the stack.
     /// # Examples
     /// ```
-    /// use rust_forth::forth::Forth;
+    /// use rust_forth::forth::interpreter::Forth;
     /// use std::io::Sink;
-    /// let forth: Forth<Sink> = Forth::new(None, None);
+    /// let mut forth: Forth<Sink> = Forth::new(None, None);
     /// let elements = vec![1, 2, -3];
     /// for element in &elements {
     ///     let _ = forth.push(*element);
@@ -281,7 +298,7 @@ impl<W: Write> Forth<W> {
 mod tests {
     #![allow(unused_imports)]
     use crate::forth::boolean_operations::{BooleanOperation, LogicalOperation};
-    use crate::forth::forth::{DefineWord, Forth, ForthData, ForthError, ForthInstruction};
+    use crate::forth::interpreter::{DefineWord, Forth, ForthData, ForthError, ForthInstruction};
     use crate::forth::word::Word;
     use crate::stack::stack_operations::StackOperation;
     use std::io::Sink;

@@ -1,5 +1,5 @@
 use crate::errors::Error;
-use crate::stack::stack::Stack;
+use crate::stack::core::Stack;
 
 #[derive(Debug, PartialEq)]
 pub enum StackOperation {

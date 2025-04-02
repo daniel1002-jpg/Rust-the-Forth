@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 use std::io::Write;
 
-use crate::calculator::calculator::Calculator;
+use crate::calculator::operations::Calculator;
 use crate::errors::Error;
 use crate::forth::forth_errors::ForthError;
 use crate::forth::intructions::{DefineWord, ForthData, ForthInstruction};
-use crate::stack::stack::Stack;
+use crate::stack::core::Stack;
 use crate::stack::stack_operations::execute_stack_operation;
 
 use super::boolean_operations::{BooleanOperationManager, TRUE};
@@ -22,7 +22,7 @@ pub enum Word {
 }
 
 /// Struct that represents a word manager in the Forth interpreter
-/// 
+///
 pub struct WordManager {
     words: HashMap<Word, Vec<ForthData>>,
 }
@@ -61,7 +61,7 @@ impl WordManager {
     fn convert_to_word_defintion(&self, instruction: ForthInstruction) -> Result<ForthData, Error> {
         match instruction {
             ForthInstruction::Number(number) => Ok(ForthData::Number(number)),
-            ForthInstruction::Operator(operator) => Ok(ForthData::Operator(String::from(operator))),
+            ForthInstruction::Operator(operator) => Ok(ForthData::Operator(operator.to_string())),
             ForthInstruction::StackWord(stack_word) => Ok(ForthData::StackWord(stack_word)),
             ForthInstruction::DefineWord(define_word) => match define_word {
                 DefineWord::Name(name) => {
@@ -81,7 +81,7 @@ impl WordManager {
             ForthInstruction::OutpuEmit => Ok(ForthData::OutpuEmit),
             ForthInstruction::OutputCR => Ok(ForthData::OutputCR),
             ForthInstruction::OutputDotQuote(string) => {
-                Ok(ForthData::OutputDotQuote(String::from(string)))
+                Ok(ForthData::OutputDotQuote(string.to_string()))
             }
             _ => Err(ForthError::InvalidWord.into()),
         }
@@ -253,7 +253,7 @@ impl WordManager {
     }
 }
 
-fn find_end_definition(body: &Vec<ForthInstruction>) -> Option<usize> {
+fn find_end_definition(body: &[ForthInstruction]) -> Option<usize> {
     for (index, element) in body.iter().enumerate() {
         if let ForthInstruction::EndDefinition = element {
             return Some(index);
@@ -265,10 +265,9 @@ fn find_end_definition(body: &Vec<ForthInstruction>) -> Option<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::forth::boolean_operations::{FALSE, LogicalOperation};
+    use crate::forth::boolean_operations::LogicalOperation;
     use crate::forth::intructions::ForthInstruction;
-    use crate::stack::stack::Stack;
-    use crate::stack::stack_errors::StackError;
+    use crate::stack::core::Stack;
     use std::io::Sink;
 
     #[test]
