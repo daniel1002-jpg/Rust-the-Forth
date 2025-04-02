@@ -1,15 +1,8 @@
-// mod calculator;
-// mod errors;
-// mod forth;
-// mod stack;
-
 use std::env;
-
 use rust_forth::{Config, forth::parser::Parser};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    dbg!(&args);
     let parser = Parser::new();
     let config = Config::build(&args, &parser);
 

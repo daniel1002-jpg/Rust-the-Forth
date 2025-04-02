@@ -1,0 +1,82 @@
+# Note that our specification differs from standard Forth, We separate every
+# print operation with whitespace to avoid ambiguity. (`.`, `." "`, `emit`)
+
+- name: "dot without leftover"
+  code: |
+    1 2
+    . .
+  expected_output: "2 1"
+  expected_stack: []
+
+- name: "dot with leftover"
+  code: |
+    1 2 3 4 5
+    . . .
+  expected_output: "5 4 3"
+  expected_stack: [1, 2]
+
+- name: "cr 1"
+  code: |
+    cr
+  expected_output: "\n"
+  expected_stack: []
+
+- name: "cr 2"
+  code: |
+    cr cr
+  expected_output: "\n\n"
+  expected_stack: []
+
+- name: "dot and cr"
+  code: |
+    1 .
+    cr cr
+    2 .
+  expected_output: "1\n\n2"
+  expected_stack: []
+
+- name: "emit uppercase"
+  code: |
+    65 emit
+  expected_output: "A"
+  expected_stack: []
+
+- name: "emit lowercase"
+  code: |
+    97 emit
+  expected_output: "a"
+  expected_stack: []
+
+- name: "emit multiple"
+  code: |
+    68 67 66 65
+    emit emit emit emit
+  expected_output: "A B C D"
+  expected_stack: []
+
+- name: "dot-quote hello world"
+  code: |
+    ." hello world"
+  expected_output: "hello world"
+  expected_stack: []
+
+- name: "dot-quote multiple whitespace"
+  code: |
+    ."hello      world!"
+  expected_output: "hello      world!"
+  expected_stack: []
+
+- name: "dot-quote multiples"
+  code: |
+    ." hello"
+    ." world"
+  expected_output: "hello world"
+  expected_stack: []
+
+- name: "dot-quote and cr"
+  code: |
+    ." hello"
+    cr
+    ." world"
+  expected_output: "hello\nworld"
+  expected_stack: []

@@ -1,0 +1,93 @@
+- name: "unit computation 1"
+  code: |
+    : meter 100 * ;
+    : decimeter 10 * ;
+    : centimeter 1 * ;
+    1 meter 5 decimeter 2 centimeter + +
+  expected_stack: [152]
+
+- name: "unit computation 2"
+  code: |
+    : seconds 1 * ;
+    : minutes 60 * seconds ;
+    : hours 60 * minutes ;
+    2 hours 13 minutes 5 seconds + +
+  expected_stack: [7985]
+
+- name: "constant summation"
+  code: |
+    : one1 1 ;
+    : one2  one1 one1 ;
+    : one4  one2 one2 ;
+    : one8  one4 one4 ;
+    : one16 one8 one8 ;
+    : add1 + ;
+    : add2  add1 add1 ;
+    : add4  add2 add2 ;
+    : add8  add4 add4 ;
+    : add16 add8 add8 ;
+    0
+    one16
+    add16
+  expected_stack: [16]
+
+- name: "linear summation"
+  code: |
+    : next1 dup 1 + ;
+    : next2  next1 next1 ;
+    : next4  next2 next2 ;
+    : next8  next4 next4 ;
+    : next16 next8 next8 ;
+    : add1 + ;
+    : add2  add1 add1 ;
+    : add4  add2 add2 ;
+    : add8  add4 add4 ;
+    : add16 add8 add8 ;
+    0
+    next16
+    add16
+  expected_stack: [136]
+
+- name: "geometric summation"
+  code: |
+    : next1 dup 2 * ;
+    : next2  next1 next1 ;
+    : next4  next2 next2 ;
+    : next8  next4 next4 ;
+    : add1 + ;
+    : add2  add1 add1 ;
+    : add4  add2 add2 ;
+    : add8  add4 add4 ;
+    1
+    next8
+    add8
+  expected_stack: [511]
+
+- name: "power of 2"
+  code: |
+    : next1 dup 2 * ;
+    : next2  next1 next1 ;
+    : next4  next2 next2 ;
+    : mul1 * ;
+    : mul2  mul1 mul1 ;
+    : mul4  mul2 mul2 ;
+    1
+    next4
+    mul4
+  expected_stack: [1024]
+
+- name: "digit to string"
+  code: |
+    : f
+      dup 0 = if
+        drop ." zero"
+      else dup 1 = if
+        drop ." one"
+      else dup 2 = if
+        drop ." two"
+      then then then ;
+    0 f cr
+    1 f cr
+    2 f cr
+  expected_output: "zero\none\ntwo"
+  expected_stack: []

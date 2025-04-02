@@ -171,7 +171,7 @@ impl<W: Write> Forth<W> {
                 }
                 _ => {}
             }
-            println!("{:?}", self.stack);
+            // println!("{:?}", self.stack);
         }
         Ok(())
     }

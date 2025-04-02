@@ -47,7 +47,6 @@ impl WordManager {
     ) -> Result<(), Error> {
         let end_index = find_end_definition(&body).ok_or(ForthError::InvalidWord)?;
         let word_definition = body.into_iter().take(end_index).collect::<Vec<_>>();
-        // let word_definition = &body[..end_index];
         let mut definition: Vec<ForthData> = Vec::new();
 
         for element in word_definition {
@@ -103,13 +102,13 @@ impl WordManager {
                 None => return Err(ForthError::UnknownWord.into()),
             };
 
-            println!("Instructions: {:?}", instructions);
-            println!("Initial Stack: {:?}", stack);
+            // println!("Instructions: {:?}", instructions);
+            // println!("Initial Stack: {:?}", stack);
 
             let mut i = 0;
             while i < instructions.len() {
-                println!("Executing: {:?}", instructions[i]);
-                println!("index: {:?}", i);
+                // println!("Executing: {:?}", instructions[i]);
+                // println!("index: {:?}", i);
                 match &instructions[i] {
                     ForthData::Number(number) => {
                         stack.push(*number)?;
@@ -149,7 +148,7 @@ impl WordManager {
                     ForthData::OutputDot => {
                         if let Ok(top) = stack.drop() {
                             if let Some(ref mut writer) = writer {
-                                println!("{:?}", top);
+                                // println!("{:?}", top);
                                 let _ = write!(writer, "{} ", top);
                                 let _ = writer.flush();
                             }
@@ -165,7 +164,7 @@ impl WordManager {
                         if let Ok(top) = stack.drop() {
                             if let Ok(ascii_char) = u8::try_from(top) {
                                 if let Some(ref mut writer) = writer {
-                                    println!("{:?}", ascii_char);
+                                    // println!("{:?}", ascii_char);
                                     let _ = write!(writer, "{} ", ascii_char as char);
                                     let _ = writer.flush();
                                 }
@@ -180,17 +179,17 @@ impl WordManager {
                     }
                     ForthData::DefineWord(DefineWord::If) => {
                         let condition = stack.drop()?;
-                        println!("Condition: {:?}", condition);
-                        println!("index before if: {:?}", i);
+                        // println!("Condition: {:?}", condition);
+                        // println!("index before if: {:?}", i);
                         if condition == TRUE {
-                            println!("index after if: {:?}", i);
+                            // println!("index after if: {:?}", i);
                             i += 1;
                         } else {
                             let mut skip = 1;
                             while i < instructions.len() && skip > 0 {
                                 i += 1;
-                                println!("Skipping if: {:?}", instructions[i]);
-                                println!("Skip: {:?}", skip);
+                                // println!("Skipping if: {:?}", instructions[i]);
+                                // println!("Skip: {:?}", skip);
                                 match &instructions[i] {
                                     ForthData::DefineWord(DefineWord::If) => skip += 1,
                                     ForthData::DefineWord(DefineWord::Then) => skip -= 1,
@@ -198,15 +197,15 @@ impl WordManager {
                                     _ => {}
                                 }
                             }
-                            println!("index after if: {:?}", i);
+                            // println!("index after if: {:?}", i);
                         }
                     }
                     ForthData::DefineWord(DefineWord::Else) => {
-                        println!("index before else: {:?}", i);
+                        // println!("index before else: {:?}", i);
                         let mut skip = 1;
                         while i < instructions.len() && skip > 0 {
                             i += 1;
-                            println!("Skipping else: {:?}", instructions[i]);
+                            // println!("Skipping else: {:?}", instructions[i]);
                             match &instructions[i] {
                                 ForthData::DefineWord(DefineWord::If) => skip += 1,
                                 ForthData::DefineWord(DefineWord::Then) => skip -= 1,

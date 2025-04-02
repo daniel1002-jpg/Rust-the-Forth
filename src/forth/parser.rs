@@ -58,7 +58,6 @@ impl Parser {
     pub fn parse_instructions(&self, input: String) -> Vec<ForthInstruction> {
         let mut instructions = Vec::new();
         let tokens = self.tokenize(&input);
-        dbg!(&tokens);
         for token in tokens {
             self.parse_token(token, &mut instructions)
         }
@@ -105,8 +104,8 @@ impl Parser {
                 start = i + 1;
                 i += 1;
             } else if !in_quotes && matches!(chars[i], ':' | ';') {
-                println!("i: {}", i);
-                println!("chars[i]: {}", chars[i]);
+                // println!("i: {}", i);
+                // println!("chars[i]: {}", chars[i]);
                 if start < i {
                     tokens.push(input[start..i].to_string());
                 }
@@ -298,8 +297,6 @@ impl Parser {
         if parts.len() != 2 {
             return Err(Error::InvalidStackSize);
         }
-
-        dbg!(&parts);
 
         if let Ok(size) = parts[1].parse::<usize>() {
             return Ok(size);
