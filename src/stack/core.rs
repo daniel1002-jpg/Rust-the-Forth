@@ -107,8 +107,8 @@ impl Stack {
 
         let last = self.drop()?;
         let before_last = self.drop()?;
-        let _ = self.push(before_last);
         let _ = self.push(last);
+        let _ = self.push(before_last);
         Ok(())
     }
 
@@ -356,22 +356,17 @@ mod tests {
     #[test]
     fn can_swap_top_two_elements_in_stack() {
         let mut stack = Stack::new(None);
-        let mut elements = vec![1, 3];
-        let mut dropped = Vec::new();
+        let elements = vec![1, 3];
+        let expected_result = vec![3, 1];
 
         for element in &elements {
             let _ = stack.push(*element);
         }
 
         let _ = stack.swap();
-        for _ in 0..stack.size() {
-            if let Ok(droped) = stack.drop() {
-                dropped.push(droped);
-            }
-        }
-        elements.reverse();
-
-        assert_eq!(dropped, elements);
+        let result = stack.get_stack_content();
+        
+        assert_eq!(*result, expected_result);
     }
 
     #[test]

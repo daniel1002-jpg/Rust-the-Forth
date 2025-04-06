@@ -44,7 +44,7 @@ impl Config {
     }
 }
 
-pub fn run(config: Config, parser: &Parser) -> Result<(), Box<dyn std::error::Error>> {
+pub fn run(config: Config) -> Result<(), Box<dyn std::error::Error>> {
     let file = File::open(&config.file_path)?;
     let reader = io::BufReader::new(file);
     let writer = io::BufWriter::new(io::stdout());
@@ -57,11 +57,15 @@ pub fn run(config: Config, parser: &Parser) -> Result<(), Box<dyn std::error::Er
             Ok(line) => line,
             _ => "Error reading line".to_string(),
         };
-        let tokens = parser.parse_instructions(line_readed);
+        let tokens = forth.parse_instructions(line_readed);
+        // println!("\n");
+        // dbg!("tokens: {:?}", &tokens);
         let instructions = tokens;
         forth.process_data(instructions)?;
 
         write_stack_output(&forth, &mut stack_writer)?;
+
+        // println!("Line: {:?} success processed", line_readed.clone());
     }
 
     fn write_stack_output<W: Write>(

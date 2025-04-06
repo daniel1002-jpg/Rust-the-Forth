@@ -1,7 +1,7 @@
 use crate::errors::Error;
 
-// use crate::{ForthInstruction, LogicalOperation};
 use super::intructions::DefineWord;
+use super::word::{Word, WordManager};
 use crate::forth::boolean_operations::{BooleanOperation, LogicalOperation};
 use crate::forth::intructions::ForthInstruction;
 use crate::stack::stack_operations::StackOperation;
@@ -19,6 +19,13 @@ pub const DROP: StackOperation = StackOperation::Drop;
 pub const SWAP: StackOperation = StackOperation::Swap;
 pub const OVER: StackOperation = StackOperation::Over;
 pub const ROT: StackOperation = StackOperation::Rot;
+
+#[derive(Debug, PartialEq)]
+pub enum ParserState {
+    OutsideDefinition,
+    InsideDefinition,
+    ParsingWordName,
+}
 
 /// Parser for Forth instructions
 /// This struct is responsible for parsing Forth instructions from a string input.
@@ -45,22 +52,27 @@ impl Parser {
     /// ```
     /// use rust_forth::forth::parser::Parser;
     /// use rust_forth::forth::intructions::ForthInstruction;
+    /// use rust_forth::forth::word::WordManager;
     /// let parser = Parser::new();
+    /// let word_manager = WordManager::new();
     /// let input = String::from("1 2 +");
     /// let expected_result = vec![
     ///     ForthInstruction::Number(1),
     ///     ForthInstruction::Number(2),
     ///     ForthInstruction::Operator("+".to_string()),
     /// ];
-    /// let result = parser.parse_instructions(input);
+    /// let result = parser.parse_instructions(input, &word_manager);
     /// assert_eq!(result, expected_result);
     /// ```
-    pub fn parse_instructions(&self, input: String) -> Vec<ForthInstruction> {
+    pub fn parse_instructions(&self, input: String, word_manager: &WordManager) -> Vec<ForthInstruction> {
         let mut instructions = Vec::new();
         let tokens = self.tokenize(&input);
+        let mut state = ParserState::OutsideDefinition;
+
         for token in tokens {
-            self.parse_token(token, &mut instructions)
+            self.parse_token(token, &mut instructions, &mut state, word_manager);
         }
+
         instructions
     }
 
@@ -128,49 +140,226 @@ impl Parser {
     /// # Arguments
     /// * `token` - A string containing the token to be parsed.
     /// * `instructions` - A mutable reference to a vector of Forth instructions where the parsed instruction will be added.
-    fn parse_token(&self, token: String, instructions: &mut Vec<ForthInstruction>) {
-        match token.as_str() {
-            num if self.is_number(num.to_string()) => {
-                if let Ok(parsed_num) = num.parse::<i16>() {
-                    instructions.push(ForthInstruction::Number(parsed_num));
+    fn parse_token(
+        &self,
+        token: String,
+        instructions: &mut Vec<ForthInstruction>,
+        state: &mut ParserState,
+        word_manager: &WordManager,
+    ) {
+        match state {
+            ParserState::OutsideDefinition => match token.as_str() {
+                ":" => {
+                    instructions.push(ForthInstruction::StartDefinition);
+                    *state = ParserState::ParsingWordName;
                 }
-            }
-            op if self.is_operator(op.to_string()) => {
-                instructions.push(ForthInstruction::Operator(op.to_string()))
-            }
-            _ if self.parse_logical_operation(&token).is_some() => {
-                if let Some(logical_op) = self.parse_logical_operation(&token) {
-                    instructions.push(logical_op);
+                ";" => instructions.push(ForthInstruction::EndDefinition),
+                "." => instructions.push(ForthInstruction::OutputDot),
+                _ if token.eq_ignore_ascii_case("emit") => {
+                    instructions.push(ForthInstruction::OutpuEmit);
+                    // println!("Error parsing token to emit: {:?}", token);
                 }
-            }
-            _ if self.parse_boolean_operation(&token).is_some() => {
-                if let Some(boolean_op) = self.parse_boolean_operation(&token) {
-                    instructions.push(boolean_op);
+                _ if token.eq_ignore_ascii_case("cr") => {
+                    instructions.push(ForthInstruction::OutputCR)
                 }
-            }
-            _ if self.parse_stack_operation(&token).is_some() => {
-                if let Some(stack_op) = self.parse_stack_operation(&token) {
-                    instructions.push(stack_op);
+                _ if token.starts_with('.') && token.ends_with('"') => {
+                    let quoted_string = &token[3..token.len() - 1];
+                    instructions.push(ForthInstruction::OutputDotQuote(quoted_string.to_string()));
                 }
-            }
-            ":" => instructions.push(ForthInstruction::StartDefinition),
-            ";" => instructions.push(ForthInstruction::EndDefinition),
-            "." => instructions.push(ForthInstruction::OutputDot),
-            _ if token.eq_ignore_ascii_case("emit") => {
-                instructions.push(ForthInstruction::OutpuEmit)
-            }
-            _ if token.eq_ignore_ascii_case("cr") => instructions.push(ForthInstruction::OutputCR),
-            _ if token.starts_with('.') && token.ends_with('"') => {
-                let quoted_string = &token[3..token.len() - 1];
-                instructions.push(ForthInstruction::OutputDotQuote(quoted_string.to_string()));
-            }
-            _ if self.parse_word(&token).is_some() => {
-                if let Some(word) = self.parse_word(&token) {
-                    instructions.push(word);
+                _ if self.is_number(token.to_string()) => {
+                    if let Ok(parsed_num) = token.parse::<i16>() {
+                        instructions.push(ForthInstruction::Number(parsed_num));
+                    }
                 }
+                _ if self.is_operator(token.to_string()) => {
+                    if word_manager.is_word_defined(&Word::UserDefined(token.to_string())) {
+                        instructions.push(ForthInstruction::DefineWord(DefineWord::Name(
+                            token.to_string().to_lowercase(),
+                        )));
+                    } else {
+                        instructions.push(ForthInstruction::Operator(token));
+                    }
+                }
+                _ if self.parse_stack_operation(&token, word_manager).is_some() => {
+                    if let Some(stack_op) = self.parse_stack_operation(&token, word_manager) {
+                        instructions.push(stack_op);
+                    } else {
+                        println!("Error parsing token to stack operation: {:?}", token);
+                    }
+                }
+                _ if self.parse_logical_operation(&token).is_some() => {
+                    if let Some(logical_op) = self.parse_logical_operation(&token) {
+                        instructions.push(logical_op);
+                    }
+                }
+                _ if self.parse_boolean_operation(&token).is_some() => {
+                    if let Some(boolean_op) = self.parse_boolean_operation(&token) {
+                        instructions.push(boolean_op);
+                    }
+                }
+                _ if self.parse_word(&token, word_manager).is_some() => {
+                    if let Some(word) = self.parse_word(&token, word_manager) {
+                        instructions.push(word);
+                    } else {
+                        println!("Error parsing token to word: {:?}", token);
+                    }
+                }
+                _ => {}
+            },
+            ParserState::ParsingWordName => {
+                instructions.push(ForthInstruction::DefineWord(DefineWord::Name(token)));
+                *state = ParserState::InsideDefinition;
             }
-            _ => (),
+            ParserState::InsideDefinition => match token.as_str() {
+                ";" => {
+                    instructions.push(ForthInstruction::EndDefinition);
+                    *state = ParserState::OutsideDefinition;
+                }
+                "." => instructions.push(ForthInstruction::OutputDot),
+                _ if token.eq_ignore_ascii_case("emit") => {
+                    instructions.push(ForthInstruction::OutpuEmit);
+                    // println!("Error parsing token to emit: {:?}", token);
+                }
+                _ if token.eq_ignore_ascii_case("cr") => {
+                    instructions.push(ForthInstruction::OutputCR)
+                }
+                _ if token.starts_with('.') && token.ends_with('"') => {
+                    let quoted_string = &token[3..token.len() - 1];
+                    instructions.push(ForthInstruction::OutputDotQuote(quoted_string.to_string()));
+                }
+                _ if self.is_number(token.to_string()) => {
+                    if let Ok(parsed_num) = token.parse::<i16>() {
+                        instructions.push(ForthInstruction::Number(parsed_num));
+                    }
+                }
+                _ if self.is_operator(token.to_string()) => {
+                    if word_manager.is_word_defined(&Word::UserDefined(token.to_string())) {
+                        instructions.push(ForthInstruction::DefineWord(DefineWord::Name(
+                            token.to_string(),
+                        )));
+                    } else {
+                        instructions.push(ForthInstruction::Operator(token));
+                    }
+                }
+                _ if self.parse_logical_operation(&token).is_some() => {
+                    if let Some(logical_op) = self.parse_logical_operation(&token) {
+                        instructions.push(logical_op);
+                    }
+                }
+                _ if self.parse_boolean_operation(&token).is_some() => {
+                    if let Some(boolean_op) = self.parse_boolean_operation(&token) {
+                        instructions.push(boolean_op);
+                    }
+                }
+                _ if self.parse_stack_operation(&token, word_manager).is_some() => {
+                    if let Some(stack_op) = self.parse_stack_operation(&token, word_manager) {
+                        instructions.push(stack_op);
+                    } else {
+                        println!("Error parsing token to stack operation: {:?}", token);
+                    }
+                }
+                _ => {
+                    if let Some(word) = self.parse_word(&token, word_manager) {
+                        instructions.push(word);
+                    } else {
+                        println!("Error parsing token to word: {:?}", token);
+                    }
+                    // instructions.push(ForthInstruction::DefineWord(DefineWord::Name(token)));
+                }
+            },
+            // "." => instructions.push(ForthInstruction::OutputDot),
+            // _ if token.eq_ignore_ascii_case("emit") => {
+            //     instructions.push(ForthInstruction::OutpuEmit);
+            //     // println!("Error parsing token to emit: {:?}", token);
+            // }
+            // _ if token.eq_ignore_ascii_case("cr") => instructions.push(ForthInstruction::OutputCR),
+            // _ if token.starts_with('.') && token.ends_with('"') => {
+            //     let quoted_string = &token[3..token.len() - 1];
+            //     instructions.push(ForthInstruction::OutputDotQuote(quoted_string.to_string()));
+            // }
+            // _ if self.parse_logical_operation(&token).is_some() => {
+            //     if let Some(logical_op) = self.parse_logical_operation(&token) {
+            //         instructions.push(logical_op);
+            //     } else {
+            //         println!("Error parsing token to logical operation: {:?}", token);
+            //     }
+            // }
+            // _ if self.parse_boolean_operation(&token).is_some() => {
+            //     if let Some(boolean_op) = self.parse_boolean_operation(&token) {
+            //         instructions.push(boolean_op);
+            //     } else {
+            //         println!("Error parsing token to boolean operation: {:?}", token);
+            //     }
+            // }
+            // _ if self.parse_word(&token, is_definition).is_some() => {
+            //     if let Some(word) = self.parse_word(&token, is_definition) {
+            //         instructions.push(word);
+            //     } else {
+            //         println!("Error parsing token to word: {:?}", token);
+            //     }
+            // }
+            // _ if self.parse_stack_operation(&token).is_some() => {
+            //     if let Some(stack_op) = self.parse_stack_operation(&token) {
+            //         instructions.push(stack_op);
+            //     } else {
+            //         println!("Error parsing token to stack operation: {:?}", token);
+            //     }
+            // }
+            // _ => (),
+            // }
         }
+
+        // match token.as_str() {
+        //     num if self.is_number(num.to_string()) => {
+        //         if let Ok(parsed_num) = num.parse::<i16>() {
+        //             instructions.push(ForthInstruction::Number(parsed_num));
+        //         }
+        //     }
+        //     op if self.is_operator(op.to_string()) => {
+        //         instructions.push(ForthInstruction::Operator(op.to_string()))
+        //     }
+        //     ":" => instructions.push(ForthInstruction::StartDefinition),
+        //     ";" => instructions.push(ForthInstruction::EndDefinition),
+        //     "." => instructions.push(ForthInstruction::OutputDot),
+        //     _ if token.eq_ignore_ascii_case("emit") => {
+        //         instructions.push(ForthInstruction::OutpuEmit);
+        //         // println!("Error parsing token to emit: {:?}", token);
+        //     }
+        //     _ if token.eq_ignore_ascii_case("cr") => instructions.push(ForthInstruction::OutputCR),
+        //     _ if token.starts_with('.') && token.ends_with('"') => {
+        //         let quoted_string = &token[3..token.len() - 1];
+        //         instructions.push(ForthInstruction::OutputDotQuote(quoted_string.to_string()));
+        //     }
+        //     _ if self.parse_logical_operation(&token).is_some() => {
+        //         if let Some(logical_op) = self.parse_logical_operation(&token) {
+        //             instructions.push(logical_op);
+        //         } else {
+        //             println!("Error parsing token to logical operation: {:?}", token);
+        //         }
+        //     }
+        //     _ if self.parse_boolean_operation(&token).is_some() => {
+        //         if let Some(boolean_op) = self.parse_boolean_operation(&token) {
+        //             instructions.push(boolean_op);
+        //         } else {
+        //             println!("Error parsing token to boolean operation: {:?}", token);
+        //         }
+        //     }
+        //     _ if self.parse_word(&token, is_definition).is_some() => {
+        //         if let Some(word) = self.parse_word(&token, is_definition) {
+        //             instructions.push(word);
+        //         } else {
+        //             println!("Error parsing token to word: {:?}", token);
+        //         }
+        //     }
+        //     _ if self.parse_stack_operation(&token).is_some() => {
+        //         if let Some(stack_op) = self.parse_stack_operation(&token) {
+        //             instructions.push(stack_op);
+        //         } else {
+        //             println!("Error parsing token to stack operation: {:?}", token);
+        //         }
+        //     }
+        //     _ => (),
+        // }
     }
 
     /// Checks if a token is a number.
@@ -240,14 +429,23 @@ impl Parser {
     /// # Returns
     /// * `Some(ForthInstruction)` if the token is a stack operation.
     /// * `None` if the token is not a stack operation.
-    fn parse_stack_operation(&self, token: &str) -> Option<ForthInstruction> {
+    fn parse_stack_operation(&self, token: &str, word_manager: &WordManager) -> Option<ForthInstruction> {
+        if word_manager.is_word_defined(&Word::UserDefined(token.to_string())) {
+            return Some(ForthInstruction::DefineWord(DefineWord::Name(
+                token.to_string(),
+            )));
+        }
+        
         match token {
             _ if token.eq_ignore_ascii_case("dup") => Some(ForthInstruction::StackWord(DUP)),
             _ if token.eq_ignore_ascii_case("drop") => Some(ForthInstruction::StackWord(DROP)),
             _ if token.eq_ignore_ascii_case("swap") => Some(ForthInstruction::StackWord(SWAP)),
             _ if token.eq_ignore_ascii_case("over") => Some(ForthInstruction::StackWord(OVER)),
             _ if token.eq_ignore_ascii_case("rot") => Some(ForthInstruction::StackWord(ROT)),
-            _ => None,
+            _ => {
+                println!("Unknown stack operation: {}", token);
+                None
+            }
         }
     }
 
@@ -258,7 +456,13 @@ impl Parser {
     /// # Returns
     /// * `Some(ForthInstruction)` if the token is a word.
     /// * `None` if the token is not a word.   
-    fn parse_word(&self, token: &String) -> Option<ForthInstruction> {
+    fn parse_word(&self, token: &String, word_manager: &WordManager) -> Option<ForthInstruction> {
+        if word_manager.is_word_defined(&Word::UserDefined(token.to_string())) {
+            return Some(ForthInstruction::DefineWord(DefineWord::Name(
+                token.to_string(),
+            )));
+        }
+
         match token.as_str() {
             _ if token.eq_ignore_ascii_case("if") => {
                 Some(ForthInstruction::DefineWord(DefineWord::If))
@@ -269,8 +473,11 @@ impl Parser {
             _ if token.eq_ignore_ascii_case("then") => {
                 Some(ForthInstruction::DefineWord(DefineWord::Then))
             }
+            // _ if self.parse_stack_operation(&token).is_some() => {
+            //     self.parse_stack_operation(&token)
+            // }
             _ => Some(ForthInstruction::DefineWord(DefineWord::Name(
-                token.to_string(),
+                token.to_string().to_lowercase(),
             ))),
         }
     }
@@ -314,6 +521,7 @@ mod tests {
     #[test]
     fn can_parse_simple_instructions() {
         let parser = Parser::new();
+        let word_manager = WordManager::new();
         let input = String::from("1 2 +");
         let expected_result = vec![
             ForthInstruction::Number(1),
@@ -321,7 +529,7 @@ mod tests {
             ForthInstruction::Operator("+".to_string()),
         ];
 
-        let result = parser.parse_instructions(input);
+        let result = parser.parse_instructions(input, &word_manager);
 
         assert_eq!(result, expected_result);
     }
@@ -329,6 +537,7 @@ mod tests {
     #[test]
     fn can_parse_logical_instructions() {
         let parser = Parser::new();
+        let word_manager = WordManager::new();
         let input = String::from("1 2 <");
         let expected_result = vec![
             ForthInstruction::Number(1),
@@ -336,7 +545,7 @@ mod tests {
             ForthInstruction::LogicalOperation(LogicalOperation::LessThan),
         ];
 
-        let result = parser.parse_instructions(input);
+        let result = parser.parse_instructions(input, &word_manager);
 
         assert_eq!(result, expected_result);
     }
@@ -344,6 +553,7 @@ mod tests {
     #[test]
     fn can_parse_boolean_instructions() {
         let parser = Parser::new();
+        let word_manager = WordManager::new();
         let input = String::from("3 4 < 20 30 < AND");
         let expected_result = vec![
             ForthInstruction::Number(3),
@@ -355,7 +565,7 @@ mod tests {
             ForthInstruction::BooleanOperation(BooleanOperation::And),
         ];
 
-        let result = parser.parse_instructions(input);
+        let result = parser.parse_instructions(input, &word_manager);
 
         assert_eq!(result, expected_result);
     }
@@ -363,6 +573,7 @@ mod tests {
     #[test]
     fn can_parse_intruction_that_manipulate_the_stack() {
         let parser = Parser::new();
+        let word_manager = WordManager::new();
         let input = String::from("1 2 3 DROP DUP SWAP");
         let expected_result = vec![
             ForthInstruction::Number(1),
@@ -373,7 +584,7 @@ mod tests {
             ForthInstruction::StackWord(StackOperation::Swap),
         ];
 
-        let result = parser.parse_instructions(input);
+        let result = parser.parse_instructions(input, &word_manager);
 
         assert_eq!(result, expected_result);
     }
@@ -381,13 +592,14 @@ mod tests {
     #[test]
     fn can_parse_defined_words() {
         let parser = Parser::new();
+        let word_manager = WordManager::new();
         let input = String::from("AWORD *WORD*");
         let expected_result = vec![
-            ForthInstruction::DefineWord(DefineWord::Name("AWORD".to_string())),
-            ForthInstruction::DefineWord(DefineWord::Name("*WORD*".to_string())),
+            ForthInstruction::DefineWord(DefineWord::Name("aword".to_string())),
+            ForthInstruction::DefineWord(DefineWord::Name("*word*".to_string())),
         ];
 
-        let result = parser.parse_instructions(input);
+        let result = parser.parse_instructions(input, &word_manager);
 
         assert_eq!(result, expected_result);
     }
@@ -395,6 +607,7 @@ mod tests {
     #[test]
     fn can_parse_definitions() {
         let parser = Parser::new();
+        let word_manager = WordManager::new();
         let input = String::from(": NEGATE -1 * ;");
         let expected_result = vec![
             ForthInstruction::StartDefinition,
@@ -404,7 +617,7 @@ mod tests {
             ForthInstruction::EndDefinition,
         ];
 
-        let result = parser.parse_instructions(input);
+        let result = parser.parse_instructions(input, &word_manager);
 
         assert_eq!(result, expected_result);
     }
@@ -412,6 +625,7 @@ mod tests {
     #[test]
     fn can_parse_mixed_case_instructions() {
         let parser = Parser::new();
+        let word_manager = WordManager::new();
         let input = String::from("1 2 and Dup DroP");
         let expected_result = vec![
             ForthInstruction::Number(1),
@@ -421,7 +635,7 @@ mod tests {
             ForthInstruction::StackWord(StackOperation::Drop),
         ];
 
-        let result = parser.parse_instructions(input);
+        let result = parser.parse_instructions(input, &word_manager);
 
         assert_eq!(result, expected_result);
     }
@@ -429,6 +643,7 @@ mod tests {
     #[test]
     fn can_parse_ouput_generator_intruction() {
         let parser = Parser::new();
+        let word_manager = WordManager::new();
         let input = String::from(". emit CR .\" Hello, World!\"");
         let expected_result = vec![
             ForthInstruction::OutputDot,
@@ -437,7 +652,7 @@ mod tests {
             ForthInstruction::OutputDotQuote(String::from("Hello, World!")),
         ];
 
-        let result = parser.parse_instructions(input);
+        let result = parser.parse_instructions(input, &word_manager);
 
         assert_eq!(result, expected_result);
     }
@@ -445,6 +660,7 @@ mod tests {
     #[test]
     fn can_parse_definition_with_conditionals() {
         let parser = Parser::new();
+        let word_manager = WordManager::new();
         let input =
             String::from(": is-negative? 0 < IF .\" Is negative\" ELSE .\" Is positive\" then ;");
         let expected_result = vec![
@@ -459,7 +675,7 @@ mod tests {
             ForthInstruction::DefineWord(DefineWord::Then),
             ForthInstruction::EndDefinition,
         ];
-        let result = parser.parse_instructions(input);
+        let result = parser.parse_instructions(input, &word_manager);
         dbg!(&result);
         dbg!(&expected_result);
 
@@ -495,5 +711,57 @@ mod tests {
         let result = parser.parse_stack_size(input);
 
         assert_eq!(result, Err(Error::InvalidStackSize));
+    }
+
+    #[test]
+    fn test_case_insensitive_stack_operations() {
+        let parser = Parser::new();
+        let word_manager = WordManager::new();
+        let input = String::from("DUP drop swap OVER rOt");
+        let expected_result = vec![
+            ForthInstruction::StackWord(StackOperation::Dup),
+            ForthInstruction::StackWord(StackOperation::Drop),
+            ForthInstruction::StackWord(StackOperation::Swap),
+            ForthInstruction::StackWord(StackOperation::Over),
+            ForthInstruction::StackWord(StackOperation::Rot),
+        ];
+
+        let result = parser.parse_instructions(input, &word_manager);
+
+        assert_eq!(result, expected_result);
+    }
+
+    #[test]
+    fn can_parse_definition_with_reserved_words_correctly() {
+        let parser = Parser::new();
+        let word_manager = WordManager::new();
+        let input = String::from(": dup-twice dup dup ;");
+        let expected_result = vec![
+            ForthInstruction::StartDefinition,
+            ForthInstruction::DefineWord(DefineWord::Name("dup-twice".to_string())),
+            ForthInstruction::StackWord(StackOperation::Dup),
+            ForthInstruction::StackWord(StackOperation::Dup),
+            ForthInstruction::EndDefinition,
+        ];
+
+        let result = parser.parse_instructions(input, &word_manager);
+
+        assert_eq!(result, expected_result);
+    }
+
+    #[test]
+    fn test_case_insensitive_words() {
+        let parser = Parser::new();
+        let word_manager = WordManager::new();
+        let input = String::from("aWord Aword aword");
+        let expected_result = vec![
+            ForthInstruction::DefineWord(DefineWord::Name("aword".to_string())),
+            ForthInstruction::DefineWord(DefineWord::Name("aword".to_string())),
+            ForthInstruction::DefineWord(DefineWord::Name("aword".to_string())),
+        ];
+
+        let result = parser.parse_instructions(input, &word_manager);
+
+        assert_eq!(result, expected_result);
     }
 }

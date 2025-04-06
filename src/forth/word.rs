@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::io::Write;
+use std::rc::Rc;
 
 use crate::calculator::operations::Calculator;
 use crate::errors::Error;
@@ -24,7 +25,7 @@ pub enum Word {
 /// Struct that represents a word manager in the Forth interpreter
 ///
 pub struct WordManager {
-    words: HashMap<Word, Vec<ForthData>>,
+    words: HashMap<Word, Vec<Rc<ForthData>>>,
 }
 
 impl Default for WordManager {
@@ -47,43 +48,151 @@ impl WordManager {
     ) -> Result<(), Error> {
         let end_index = find_end_definition(&body).ok_or(ForthError::InvalidWord)?;
         let word_definition = body.into_iter().take(end_index).collect::<Vec<_>>();
-        let mut definition: Vec<ForthData> = Vec::new();
+        let mut definition: Vec<Rc<ForthData>> = Vec::new();
 
         for element in word_definition {
-            definition.push(self.convert_to_word_defintion(element)?);
+            let expanded_definition = self.convert_to_word_defintion(element)?;
+            definition.extend(expanded_definition);
+            // for item in expanded_definition {
+            //     definition.push(item);
+            // }
+            
+            // definition.push(expanded_definition);
         }
 
         self.words.insert(name, definition);
         Ok(())
     }
 
-    fn convert_to_word_defintion(&self, instruction: ForthInstruction) -> Result<ForthData, Error> {
+    fn convert_to_word_defintion(&self, instruction: ForthInstruction) -> Result<Vec<Rc<ForthData>>, Error> {
+        let mut expanded_definition = Vec::new();
         match instruction {
-            ForthInstruction::Number(number) => Ok(ForthData::Number(number)),
-            ForthInstruction::Operator(operator) => Ok(ForthData::Operator(operator.to_string())),
-            ForthInstruction::StackWord(stack_word) => Ok(ForthData::StackWord(stack_word)),
+            ForthInstruction::Number(number) => {
+                expanded_definition.push(Rc::new(ForthData::Number(number)));
+                // Ok(ForthData::Number(number))
+            }
+            ForthInstruction::Operator(operator) => {
+                expanded_definition.push(Rc::new(ForthData::Operator(operator.to_string())));
+                // Ok(ForthData::Operator(operator.to_string()))
+            }
+            ForthInstruction::StackWord(stack_word) => {
+                expanded_definition.push(Rc::new(ForthData::StackWord(stack_word)));
+                // Ok(ForthData::StackWord(stack_word))
+            }
             ForthInstruction::DefineWord(define_word) => match define_word {
                 DefineWord::Name(name) => {
-                    Ok(ForthData::DefineWord(DefineWord::Name(name.to_string())))
+                    if self.is_word_defined(&Word::UserDefined(name.to_string())) {
+                        // if let Some(definition) = self.words.get_mut(&Word::UserDefined(name.to_string())) {
+                        if let Some(definition) = self.get_word_definition(&Word::UserDefined(name.to_string())) {
+                            for element in definition {
+                                // Hay que QUITAR este clone después
+                                expanded_definition.push(Rc::clone(element));
+                                
+                                
+                                // let temp = match &**element {
+                                //     ForthData::BooleanOperation(bool_op) => {
+                                //         ForthData::BooleanOperation(*bool_op)
+                                //     }
+                                //     ForthData::LogicalOperation(log_op) => {
+                                //         ForthData::LogicalOperation(*log_op)
+                                //     }
+                                //     ForthData::OutputDot => ForthData::OutputDot,
+                                //     ForthData::OutpuEmit => ForthData::OutpuEmit,
+                                //     ForthData::OutputCR => ForthData::OutputCR,
+                                //     ForthData::OutputDotQuote(string) => {
+                                //         ForthData::OutputDotQuote(string.to_string())
+                                //     }
+                                //     ForthData::DefineWord(DefineWord::If) => ForthData::DefineWord(DefineWord::If),
+                                //     ForthData::DefineWord(DefineWord::Then) => ForthData::DefineWord(DefineWord::Then),
+                                //     ForthData::DefineWord(DefineWord::Else) => ForthData::DefineWord(DefineWord::Else),
+                                //     ForthData::Number(number) => {
+                                //         ForthData::Number(*number)
+                                //     },
+                                //     ForthData::Operator(operator) => ForthData::Operator(operator.to_string()),
+                                //     ForthData::StackWord(stack_word) => ForthData::StackWord(*stack_word),
+                                //     ForthData::DefineWord(DefineWord::Name(name)) => ForthData::DefineWord(DefineWord::Name(name.to_string())),
+                                // };
+                                
+                                // expanded_definition.push(Rc::new(temp));
+                                
+                                
+                                
+                                // let item = element;
+                                // expanded_definition.push(element.clone());
+                                // match element {
+                                //     ForthData::DefineWord(DefineWord::Name(name)) => {
+                                //         expanded_definition.push(ForthData::DefineWord(DefineWord::Name(name.to_string())));
+                                //     }
+                                //     ForthData::BooleanOperation(boolean_operation) => {
+                                //         expanded_definition.push(ForthData::BooleanOperation(boolean_operation));
+                                //     }
+                                //     ForthData::LogicalOperation(logical_operation) => {
+                                //         expanded_definition.push(ForthData::LogicalOperation(logical_operation));
+                                //     }
+                                //     ForthData::OutputDot => {
+                                //         expanded_definition.push(ForthData::OutputDot);
+                                //     }
+                                //     ForthData::OutpuEmit => {
+                                //         expanded_definition.push(ForthData::OutpuEmit);
+                                //     }
+                                //     ForthData::OutputCR => {
+                                //         expanded_definition.push(ForthData::OutputCR);
+                                //     }
+                                //     ForthData::OutputDotQuote(string) => {
+                                //         expanded_definition.push(ForthData::OutputDotQuote(string.to_string()));
+                                //     }
+                                //     ForthData::DefineWord(DefineWord::If) => {
+                                //         expanded_definition.push(ForthData::DefineWord(DefineWord::If));
+                                //     }
+                                //     ForthData::DefineWord(DefineWord::Then) => {
+                                //         expanded_definition.push(ForthData::DefineWord(DefineWord::Then));
+                                //     }
+                                //     ForthData::DefineWord(DefineWord::Else) => {
+                                //         expanded_definition.push(ForthData::DefineWord(DefineWord::Else));
+                                //     }
+                                //     ForthData::Number(number) => {
+                                //         expanded_definition.push(ForthData::Number(*number));
+                                //     }
+                                //     ForthData::Operator(operator) => {
+                                //         expanded_definition.push(ForthData::Operator(operator.to_string()));
+                                //     }
+                                //     ForthData::StackWord(stack_word) => {
+                                //         expanded_definition.push(ForthData::StackWord(stack_word));
+                                //     }
+                                //     _ => {}
+                                // }
+                            }
+                            
+                            // return Ok(ForthData::DefineWord(DefineWord::Name(name.to_string())));
+                        }
+                        
+                        // return Ok(ForthData::DefineWord(DefineWord::Name(name)));
+                    }
+
+                    // Ok(ForthData::DefineWord(DefineWord::Name(name.to_string())))
                 }
-                DefineWord::If => Ok(ForthData::DefineWord(DefineWord::If)),
-                DefineWord::Then => Ok(ForthData::DefineWord(DefineWord::Then)),
-                DefineWord::Else => Ok(ForthData::DefineWord(DefineWord::Else)),
+                DefineWord::If => expanded_definition.push(Rc::new(ForthData::DefineWord(DefineWord::If))),
+                DefineWord::Then => expanded_definition.push(Rc::new(ForthData::DefineWord(DefineWord::Then))),
+                DefineWord::Else => expanded_definition.push(Rc::new(ForthData::DefineWord(DefineWord::Else))),
             },
             ForthInstruction::BooleanOperation(boolean_operation) => {
-                Ok(ForthData::BooleanOperation(boolean_operation))
+                expanded_definition.push(Rc::new(ForthData::BooleanOperation(boolean_operation)))
             }
             ForthInstruction::LogicalOperation(logical_operation) => {
-                Ok(ForthData::LogicalOperation(logical_operation))
+                expanded_definition.push(Rc::new(ForthData::LogicalOperation(logical_operation)))
             }
-            ForthInstruction::OutputDot => Ok(ForthData::OutputDot),
-            ForthInstruction::OutpuEmit => Ok(ForthData::OutpuEmit),
-            ForthInstruction::OutputCR => Ok(ForthData::OutputCR),
+            ForthInstruction::OutputDot => expanded_definition.push(Rc::new(ForthData::OutputDot)),
+            ForthInstruction::OutpuEmit => expanded_definition.push(Rc::new(ForthData::OutpuEmit)),
+            ForthInstruction::OutputCR => expanded_definition.push(Rc::new(ForthData::OutputCR)),
             ForthInstruction::OutputDotQuote(string) => {
-                Ok(ForthData::OutputDotQuote(string.to_string()))
+                expanded_definition.push(Rc::new(ForthData::OutputDotQuote(string.to_string())))
             }
-            _ => Err(ForthError::InvalidWord.into()),
+            _ => {
+                println!("Invalid word: {:?}", instruction);
+                return Err(ForthError::InvalidWord.into());
+            }
         }
+        Ok(expanded_definition)
     }
 
     pub fn execute_word<W: Write>(
@@ -99,7 +208,7 @@ impl WordManager {
         while let Some(current_word) = execution_stack.pop() {
             let instructions = match self.words.get(&current_word) {
                 Some(definition) => definition,
-                None => return Err(ForthError::UnknownWord.into()),
+                None => return Err(ForthError::UnknownWord(word_name.to_string()).into()),
             };
 
             // println!("Instructions: {:?}", instructions);
@@ -109,7 +218,7 @@ impl WordManager {
             while i < instructions.len() {
                 // println!("Executing: {:?}", instructions[i]);
                 // println!("index: {:?}", i);
-                match &instructions[i] {
+                match &*instructions[i] {
                     ForthData::Number(number) => {
                         stack.push(*number)?;
                     }
@@ -190,7 +299,7 @@ impl WordManager {
                                 i += 1;
                                 // println!("Skipping if: {:?}", instructions[i]);
                                 // println!("Skip: {:?}", skip);
-                                match &instructions[i] {
+                                match &*instructions[i] {
                                     ForthData::DefineWord(DefineWord::If) => skip += 1,
                                     ForthData::DefineWord(DefineWord::Then) => skip -= 1,
                                     ForthData::DefineWord(DefineWord::Else) if skip == 1 => break,
@@ -206,7 +315,7 @@ impl WordManager {
                         while i < instructions.len() && skip > 0 {
                             i += 1;
                             // println!("Skipping else: {:?}", instructions[i]);
-                            match &instructions[i] {
+                            match &*instructions[i] {
                                 ForthData::DefineWord(DefineWord::If) => skip += 1,
                                 ForthData::DefineWord(DefineWord::Then) => skip -= 1,
                                 _ => {}
@@ -247,7 +356,7 @@ impl WordManager {
         self.words.contains_key(name)
     }
 
-    pub fn get_word_definition(&self, name: &Word) -> Option<&Vec<ForthData>> {
+    pub fn get_word_definition(&self, name: &Word) -> Option<&Vec<Rc<ForthData>>> {
         self.words.get(name)
     }
 }
@@ -278,7 +387,10 @@ mod tests {
             ForthInstruction::Operator("*".to_string()),
             ForthInstruction::EndDefinition, // end
         ];
-        let expected_result = vec![ForthData::Number(-1), ForthData::Operator("*".to_string())];
+        let expected_result = vec![
+            Rc::new(ForthData::Number(-1)), 
+            Rc::new(ForthData::Operator("*".to_string()))
+        ];
 
         let _ = word_manager
             .define_new_word(Word::UserDefined("NEGATE".to_string()), data)
@@ -328,7 +440,10 @@ mod tests {
         let result =
             word_manager.execute_word::<Sink>(stack, &calculator, boolean_manager, None, "ABS");
 
-        assert_eq!(result, Err(ForthError::UnknownWord.into()));
+        assert_eq!(
+            result,
+            Err(ForthError::UnknownWord("ABS".to_string()).into())
+        );
     }
 
     #[test]
@@ -338,7 +453,7 @@ mod tests {
             ForthInstruction::OutpuEmit,
             ForthInstruction::EndDefinition, // end
         ];
-        let expected_result = vec![ForthData::OutpuEmit];
+        let expected_result = vec![Rc::new(ForthData::OutpuEmit)];
 
         let _ = word_manager.define_new_word(Word::UserDefined("TO-ASCCI".to_string()), word);
         let result = word_manager.get_word_definition(&Word::UserDefined("TO-ASCCI".to_string()));
@@ -380,11 +495,11 @@ mod tests {
             ForthInstruction::EndDefinition,
         ];
         let expected_result = vec![
-            ForthData::Number(0),
-            ForthData::LogicalOperation(LogicalOperation::Equal),
-            ForthData::DefineWord(DefineWord::If),
-            ForthData::OutputDotQuote("Is Zero".to_string()),
-            ForthData::DefineWord(DefineWord::Then),
+            Rc::new(ForthData::Number(0)),
+            Rc::new(ForthData::LogicalOperation(LogicalOperation::Equal)),
+            Rc::new(ForthData::DefineWord(DefineWord::If)),
+            Rc::new(ForthData::OutputDotQuote("Is Zero".to_string())),
+            Rc::new(ForthData::DefineWord(DefineWord::Then)),
         ];
 
         let _ = word_manger.define_new_word(Word::UserDefined("is-zero?".to_string()), word);
@@ -419,5 +534,37 @@ mod tests {
         let result = String::from_utf8(output).unwrap();
 
         assert_eq!(result, expected_result);
+    }
+
+    #[test]
+    fn test_non_transitive() {
+        let mut word_manager = WordManager::new();
+        let stack: &mut Stack = &mut Stack::new(None);
+        let calculator = Calculator::new();
+        let boolean_manager: &mut BooleanOperationManager = &mut BooleanOperationManager::new();
+        let word_foo: Vec<ForthInstruction> = vec![
+            ForthInstruction::Number(5),
+            ForthInstruction::EndDefinition,
+        ];
+        let word_bar: Vec<ForthInstruction> = vec![
+            ForthInstruction::DefineWord(DefineWord::Name("foo".to_string())),
+            ForthInstruction::EndDefinition,
+        ];
+        let redefinition_foo: Vec<ForthInstruction> = vec![
+            ForthInstruction::Number(6),
+            ForthInstruction::EndDefinition,
+        ];
+        let expected_result = vec![5, 6];
+
+        let _ = word_manager.define_new_word(Word::UserDefined("foo".to_string()), word_foo);
+        let _ = word_manager.define_new_word(Word::UserDefined("bar".to_string()), word_bar);
+        let _ = word_manager.define_new_word(Word::UserDefined("foo".to_string()), redefinition_foo);
+
+        let _ = word_manager.execute_word::<Sink>(stack, &calculator, boolean_manager, None, "bar");
+        let _ = word_manager.execute_word::<Sink>(stack, &calculator, boolean_manager, None, "foo");
+        
+        let result = stack.get_stack_content();
+
+        assert_eq!(result, &expected_result);
     }
 }

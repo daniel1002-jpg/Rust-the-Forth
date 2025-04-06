@@ -1,13 +1,9 @@
 use rust_forth::{
-    Forth, ForthInstruction, LogicalOperation,
     forth::{
-        boolean_operations::TRUE,
-        forth_errors::ForthError,
-        intructions::{DefineWord, ForthData},
-        word::Word,
-    },
+        boolean_operations::TRUE, forth_errors::ForthError, intructions::{DefineWord, ForthData}, word::Word
+    }, Forth, ForthInstruction, LogicalOperation
 };
-use std::io::Sink;
+use std::{io::Sink, rc::Rc};
 
 #[test]
 fn can_define_new_word_that_use_boolean_operations() {
@@ -20,8 +16,8 @@ fn can_define_new_word_that_use_boolean_operations() {
         ForthInstruction::EndDefinition,
     ];
     let expected_result = vec![
-        ForthData::Number(0),
-        ForthData::LogicalOperation(LogicalOperation::GreaterThan),
+        Rc::new(ForthData::Number(0)),
+        Rc::new(ForthData::LogicalOperation(LogicalOperation::GreaterThan)),
     ];
 
     let _ = forth.process_data(definition);
@@ -72,9 +68,10 @@ fn can_define_nested_words() {
     ];
     let _ = forth.process_data(quadruple_definition);
 
-    let expected_result = vec![ForthData::DefineWord(DefineWord::Name(
-        "DOUBLE".to_string(),
-    ))];
+    let expected_result = vec![
+        Rc::new(ForthData::Number(2)),
+        Rc::new(ForthData::Operator("*".to_string())),
+    ];
 
     assert_eq!(
         forth.get_word_definition(&Word::UserDefined("QUADRUPLE".to_string())),
@@ -125,5 +122,21 @@ fn cannot_execute_unknown_word() {
 
     let result = forth.process_data(unknown_word);
 
-    assert_eq!(result, Err(ForthError::UnknownWord.into()));
+    assert_eq!(
+        result,
+        Err(ForthError::UnknownWord("UNKNOWN".to_string()).into())
+    );
+}
+
+#[test]
+fn can_exute_a_simple_instruction() {
+    // let parser = Parser::new();
+    let mut forth: Forth<Sink> = Forth::new(None, None);
+    let input = String::from("1 2 swap");
+    let expected_result = vec![2, 1];
+
+    let instructions = forth.parse_instructions(input);
+    let _ = forth.process_data(instructions);
+
+    assert_eq!(forth.get_stack_content(), &expected_result);
 }

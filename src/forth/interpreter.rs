@@ -1,12 +1,14 @@
 use super::boolean_operations::BooleanOperationManager;
 use super::forth_errors::ForthError;
 use super::intructions::*;
+use super::parser::Parser;
 use super::word::{Word, WordManager};
 use crate::calculator::operations::Calculator;
 use crate::errors::Error;
 use crate::stack::core::Stack;
 use crate::stack::stack_operations::{StackOperation, execute_stack_operation};
 use std::io::Write;
+use std::rc::Rc;
 
 /// Forth interpreter
 /// This struct represents a Forth interpreter with a stack, calculator, and word manager.
@@ -26,12 +28,14 @@ use std::io::Write;
 /// - `word_manager`: The manager for handling user-defined words.
 /// - `boolean_manager`: The manager for handling boolean operations.
 /// - `writer`: An optional writer for outputting results.
+/// - `parser`: The parser used for interpreting Forth instructions.
 pub struct Forth<W: Write> {
     stack: Stack,
     calculator: Calculator,
     word_manager: WordManager,
     boolean_manager: BooleanOperationManager,
     writer: Option<W>,
+    parser: Parser,
 }
 
 impl<W: Write> Forth<W> {
@@ -55,6 +59,7 @@ impl<W: Write> Forth<W> {
             word_manager: WordManager::new(),
             boolean_manager: BooleanOperationManager::new(),
             writer,
+            parser: Parser::new(),
         }
     }
 
@@ -99,7 +104,11 @@ impl<W: Write> Forth<W> {
     /// # Arguments
     /// - `data`: A vector of Forth instructions to be processed.
     pub fn process_data(&mut self, data: Vec<ForthInstruction>) -> Result<(), Error> {
+        println!("Executing instruction: {:?}", &data);
+
         for (i, element) in data.iter().enumerate() {
+            println!("Stack before: {:?}", self.stack.get_stack_content());
+
             match element {
                 &ForthInstruction::Number(number) => {
                     self.stack.push(number)?;
@@ -171,6 +180,7 @@ impl<W: Write> Forth<W> {
                 }
                 _ => {}
             }
+            println!("Stack after: {:?}", self.stack.get_stack_content());
             // println!("{:?}", self.stack);
         }
         Ok(())
@@ -190,6 +200,7 @@ impl<W: Write> Forth<W> {
                     self.define_new_word(word_name, data.into_iter().skip(i + 2).collect())?;
                     break;
                 } else {
+                    println!("Invalid word definition: {:?}", &data[i + 1]);
                     return Err(ForthError::InvalidWord.into());
                 }
             }
@@ -218,7 +229,7 @@ impl<W: Write> Forth<W> {
     /// - `word_name`: The name of the word to be executed.
     fn execute_new_word(&mut self, word_name: &str) -> Result<(), Error> {
         if !self.is_word_defined(&Word::UserDefined(word_name.to_string())) {
-            return Err(ForthError::UnknownWord.into());
+            return Err(ForthError::UnknownWord(word_name.to_string()).into());
         }
 
         self.word_manager.execute_word::<W>(
@@ -252,6 +263,7 @@ impl<W: Write> Forth<W> {
     ///# use rust_forth::forth::intructions::DefineWord;
     ///# use rust_forth::forth::word::Word;
     ///# use std::io::Sink;
+    ///# use std::rc::Rc;
     /// let mut forth: Forth<Sink> = Forth::new(None, None);
     /// let data: Vec<ForthInstruction> = vec![
     ///     ForthInstruction::StartDefinition, // start
@@ -264,14 +276,17 @@ impl<W: Write> Forth<W> {
     /// let _ = forth.process_data(data);
     ///
     /// assert!(forth.is_word_defined(&Word::UserDefined("NEGATE".to_string())));
-    /// let expected_definition = vec![ForthData::Number(-1), ForthData::Operator("*".to_string())];
+    /// let expected_definition = vec![
+    ///     Rc::new(ForthData::Number(-1)), 
+    ///     Rc::new(ForthData::Operator("*".to_string())),
+    /// ];
     /// let actual_definition = forth
     ///     .get_word_definition(&&Word::UserDefined("NEGATE".to_string()))
     ///     .unwrap();
     ///
     /// assert_eq!(*actual_definition, expected_definition);
     /// ```
-    pub fn get_word_definition(&self, word_name: &Word) -> Option<&Vec<ForthData>> {
+    pub fn get_word_definition(&self, word_name: &Word) -> Option<&Vec<Rc<ForthData>>> {
         self.word_manager.get_word_definition(word_name)
     }
 
@@ -293,6 +308,10 @@ impl<W: Write> Forth<W> {
     pub fn get_stack_content(&self) -> &Vec<i16> {
         self.stack.get_stack_content()
     }
+
+    pub fn parse_instructions(&self, line: String) -> Vec<ForthInstruction> {
+        self.parser.parse_instructions(line, &self.word_manager)
+    }
 }
 
 mod tests {
@@ -302,6 +321,7 @@ mod tests {
     use crate::forth::word::Word;
     use crate::stack::stack_operations::StackOperation;
     use std::io::Sink;
+    use std::rc::Rc;
 
     #[test]
     fn can_create_forth_with_stack_and_calculator_corectly() {
@@ -377,12 +397,12 @@ mod tests {
             ForthInstruction::StackWord(StackOperation::Swap),
             ForthInstruction::StackWord(StackOperation::Drop),
         ];
-        let expected_result = vec![4, 4, 2];
+        let expected_result = vec![4, 4, 4];
 
         let _ = forth.process_data(data);
 
         assert_eq!(forth.stack.size(), expected_result.len());
-        assert_eq!(forth.stack.top(), Ok(expected_result.last().unwrap()));
+        assert_eq!(forth.get_stack_content(), &expected_result);
     }
 
     #[test]
@@ -399,7 +419,10 @@ mod tests {
         let _ = forth.process_data(data);
 
         assert!(forth.is_word_defined(&Word::UserDefined("NEGATE".to_string())));
-        let expected_definition = vec![ForthData::Number(-1), ForthData::Operator("*".to_string())];
+        let expected_definition = vec![
+            Rc::new(ForthData::Number(-1)), 
+            Rc::new(ForthData::Operator("*".to_string())),
+        ];
         let actual_definition = forth
             .get_word_definition(&&Word::UserDefined("NEGATE".to_string()))
             .unwrap();
