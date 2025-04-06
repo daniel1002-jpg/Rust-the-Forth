@@ -98,6 +98,13 @@ echo "$BLOCKS" | while IFS= read -r BLOCK; do
                 exit 1
             fi
 
+            if [[ "$OUTPUT" != *"$EXPECTED_OUTPUT"* ]]; then
+                echo "Test failed for $YAML_FILE at block $BLOCK_NUMBER"
+                echo "Expected output: $EXPECTED_OUTPUT"
+                echo "Actual output: $OUTPUT"
+                exit 1
+            fi
+
             echo " "
 
             # Limpiar el bloque actual y el archivo temporal

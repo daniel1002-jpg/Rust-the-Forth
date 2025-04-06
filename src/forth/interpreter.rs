@@ -277,7 +277,7 @@ impl<W: Write> Forth<W> {
     ///
     /// assert!(forth.is_word_defined(&Word::UserDefined("NEGATE".to_string())));
     /// let expected_definition = vec![
-    ///     Rc::new(ForthData::Number(-1)), 
+    ///     Rc::new(ForthData::Number(-1)),
     ///     Rc::new(ForthData::Operator("*".to_string())),
     /// ];
     /// let actual_definition = forth
@@ -420,7 +420,7 @@ mod tests {
 
         assert!(forth.is_word_defined(&Word::UserDefined("NEGATE".to_string())));
         let expected_definition = vec![
-            Rc::new(ForthData::Number(-1)), 
+            Rc::new(ForthData::Number(-1)),
             Rc::new(ForthData::Operator("*".to_string())),
         ];
         let actual_definition = forth

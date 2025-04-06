@@ -1,7 +1,11 @@
 use rust_forth::{
+    Forth, ForthInstruction, LogicalOperation,
     forth::{
-        boolean_operations::TRUE, forth_errors::ForthError, intructions::{DefineWord, ForthData}, word::Word
-    }, Forth, ForthInstruction, LogicalOperation
+        boolean_operations::TRUE,
+        forth_errors::ForthError,
+        intructions::{DefineWord, ForthData},
+        word::Word,
+    },
 };
 use std::{io::Sink, rc::Rc};
 

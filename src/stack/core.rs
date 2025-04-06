@@ -365,7 +365,7 @@ mod tests {
 
         let _ = stack.swap();
         let result = stack.get_stack_content();
-        
+
         assert_eq!(*result, expected_result);
     }
 

@@ -56,7 +56,7 @@ impl WordManager {
             // for item in expanded_definition {
             //     definition.push(item);
             // }
-            
+
             // definition.push(expanded_definition);
         }
 
@@ -64,7 +64,10 @@ impl WordManager {
         Ok(())
     }
 
-    fn convert_to_word_defintion(&self, instruction: ForthInstruction) -> Result<Vec<Rc<ForthData>>, Error> {
+    fn convert_to_word_defintion(
+        &self,
+        instruction: ForthInstruction,
+    ) -> Result<Vec<Rc<ForthData>>, Error> {
         let mut expanded_definition = Vec::new();
         match instruction {
             ForthInstruction::Number(number) => {
@@ -82,98 +85,27 @@ impl WordManager {
             ForthInstruction::DefineWord(define_word) => match define_word {
                 DefineWord::Name(name) => {
                     if self.is_word_defined(&Word::UserDefined(name.to_string())) {
-                        // if let Some(definition) = self.words.get_mut(&Word::UserDefined(name.to_string())) {
-                        if let Some(definition) = self.get_word_definition(&Word::UserDefined(name.to_string())) {
+                        if let Some(definition) =
+                            self.get_word_definition(&Word::UserDefined(name.to_string()))
+                        {
                             for element in definition {
                                 // Hay que QUITAR este clone después
                                 expanded_definition.push(Rc::clone(element));
-                                
-                                
-                                // let temp = match &**element {
-                                //     ForthData::BooleanOperation(bool_op) => {
-                                //         ForthData::BooleanOperation(*bool_op)
-                                //     }
-                                //     ForthData::LogicalOperation(log_op) => {
-                                //         ForthData::LogicalOperation(*log_op)
-                                //     }
-                                //     ForthData::OutputDot => ForthData::OutputDot,
-                                //     ForthData::OutpuEmit => ForthData::OutpuEmit,
-                                //     ForthData::OutputCR => ForthData::OutputCR,
-                                //     ForthData::OutputDotQuote(string) => {
-                                //         ForthData::OutputDotQuote(string.to_string())
-                                //     }
-                                //     ForthData::DefineWord(DefineWord::If) => ForthData::DefineWord(DefineWord::If),
-                                //     ForthData::DefineWord(DefineWord::Then) => ForthData::DefineWord(DefineWord::Then),
-                                //     ForthData::DefineWord(DefineWord::Else) => ForthData::DefineWord(DefineWord::Else),
-                                //     ForthData::Number(number) => {
-                                //         ForthData::Number(*number)
-                                //     },
-                                //     ForthData::Operator(operator) => ForthData::Operator(operator.to_string()),
-                                //     ForthData::StackWord(stack_word) => ForthData::StackWord(*stack_word),
-                                //     ForthData::DefineWord(DefineWord::Name(name)) => ForthData::DefineWord(DefineWord::Name(name.to_string())),
-                                // };
-                                
-                                // expanded_definition.push(Rc::new(temp));
-                                
-                                
-                                
-                                // let item = element;
-                                // expanded_definition.push(element.clone());
-                                // match element {
-                                //     ForthData::DefineWord(DefineWord::Name(name)) => {
-                                //         expanded_definition.push(ForthData::DefineWord(DefineWord::Name(name.to_string())));
-                                //     }
-                                //     ForthData::BooleanOperation(boolean_operation) => {
-                                //         expanded_definition.push(ForthData::BooleanOperation(boolean_operation));
-                                //     }
-                                //     ForthData::LogicalOperation(logical_operation) => {
-                                //         expanded_definition.push(ForthData::LogicalOperation(logical_operation));
-                                //     }
-                                //     ForthData::OutputDot => {
-                                //         expanded_definition.push(ForthData::OutputDot);
-                                //     }
-                                //     ForthData::OutpuEmit => {
-                                //         expanded_definition.push(ForthData::OutpuEmit);
-                                //     }
-                                //     ForthData::OutputCR => {
-                                //         expanded_definition.push(ForthData::OutputCR);
-                                //     }
-                                //     ForthData::OutputDotQuote(string) => {
-                                //         expanded_definition.push(ForthData::OutputDotQuote(string.to_string()));
-                                //     }
-                                //     ForthData::DefineWord(DefineWord::If) => {
-                                //         expanded_definition.push(ForthData::DefineWord(DefineWord::If));
-                                //     }
-                                //     ForthData::DefineWord(DefineWord::Then) => {
-                                //         expanded_definition.push(ForthData::DefineWord(DefineWord::Then));
-                                //     }
-                                //     ForthData::DefineWord(DefineWord::Else) => {
-                                //         expanded_definition.push(ForthData::DefineWord(DefineWord::Else));
-                                //     }
-                                //     ForthData::Number(number) => {
-                                //         expanded_definition.push(ForthData::Number(*number));
-                                //     }
-                                //     ForthData::Operator(operator) => {
-                                //         expanded_definition.push(ForthData::Operator(operator.to_string()));
-                                //     }
-                                //     ForthData::StackWord(stack_word) => {
-                                //         expanded_definition.push(ForthData::StackWord(stack_word));
-                                //     }
-                                //     _ => {}
-                                // }
                             }
-                            
-                            // return Ok(ForthData::DefineWord(DefineWord::Name(name.to_string())));
+                        } else {
+                            return Err(ForthError::UnknownWord(name.to_string()).into());
                         }
-                        
-                        // return Ok(ForthData::DefineWord(DefineWord::Name(name)));
                     }
-
-                    // Ok(ForthData::DefineWord(DefineWord::Name(name.to_string())))
                 }
-                DefineWord::If => expanded_definition.push(Rc::new(ForthData::DefineWord(DefineWord::If))),
-                DefineWord::Then => expanded_definition.push(Rc::new(ForthData::DefineWord(DefineWord::Then))),
-                DefineWord::Else => expanded_definition.push(Rc::new(ForthData::DefineWord(DefineWord::Else))),
+                DefineWord::If => {
+                    expanded_definition.push(Rc::new(ForthData::DefineWord(DefineWord::If)))
+                }
+                DefineWord::Then => {
+                    expanded_definition.push(Rc::new(ForthData::DefineWord(DefineWord::Then)))
+                }
+                DefineWord::Else => {
+                    expanded_definition.push(Rc::new(ForthData::DefineWord(DefineWord::Else)))
+                }
             },
             ForthInstruction::BooleanOperation(boolean_operation) => {
                 expanded_definition.push(Rc::new(ForthData::BooleanOperation(boolean_operation)))
@@ -388,8 +320,8 @@ mod tests {
             ForthInstruction::EndDefinition, // end
         ];
         let expected_result = vec![
-            Rc::new(ForthData::Number(-1)), 
-            Rc::new(ForthData::Operator("*".to_string()))
+            Rc::new(ForthData::Number(-1)),
+            Rc::new(ForthData::Operator("*".to_string())),
         ];
 
         let _ = word_manager
@@ -542,27 +474,24 @@ mod tests {
         let stack: &mut Stack = &mut Stack::new(None);
         let calculator = Calculator::new();
         let boolean_manager: &mut BooleanOperationManager = &mut BooleanOperationManager::new();
-        let word_foo: Vec<ForthInstruction> = vec![
-            ForthInstruction::Number(5),
-            ForthInstruction::EndDefinition,
-        ];
+        let word_foo: Vec<ForthInstruction> =
+            vec![ForthInstruction::Number(5), ForthInstruction::EndDefinition];
         let word_bar: Vec<ForthInstruction> = vec![
             ForthInstruction::DefineWord(DefineWord::Name("foo".to_string())),
             ForthInstruction::EndDefinition,
         ];
-        let redefinition_foo: Vec<ForthInstruction> = vec![
-            ForthInstruction::Number(6),
-            ForthInstruction::EndDefinition,
-        ];
+        let redefinition_foo: Vec<ForthInstruction> =
+            vec![ForthInstruction::Number(6), ForthInstruction::EndDefinition];
         let expected_result = vec![5, 6];
 
         let _ = word_manager.define_new_word(Word::UserDefined("foo".to_string()), word_foo);
         let _ = word_manager.define_new_word(Word::UserDefined("bar".to_string()), word_bar);
-        let _ = word_manager.define_new_word(Word::UserDefined("foo".to_string()), redefinition_foo);
+        let _ =
+            word_manager.define_new_word(Word::UserDefined("foo".to_string()), redefinition_foo);
 
         let _ = word_manager.execute_word::<Sink>(stack, &calculator, boolean_manager, None, "bar");
         let _ = word_manager.execute_word::<Sink>(stack, &calculator, boolean_manager, None, "foo");
-        
+
         let result = stack.get_stack_content();
 
         assert_eq!(result, &expected_result);

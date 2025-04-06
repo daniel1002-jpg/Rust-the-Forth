@@ -64,7 +64,11 @@ impl Parser {
     /// let result = parser.parse_instructions(input, &word_manager);
     /// assert_eq!(result, expected_result);
     /// ```
-    pub fn parse_instructions(&self, input: String, word_manager: &WordManager) -> Vec<ForthInstruction> {
+    pub fn parse_instructions(
+        &self,
+        input: String,
+        word_manager: &WordManager,
+    ) -> Vec<ForthInstruction> {
         let mut instructions = Vec::new();
         let tokens = self.tokenize(&input);
         let mut state = ParserState::OutsideDefinition;
@@ -429,13 +433,17 @@ impl Parser {
     /// # Returns
     /// * `Some(ForthInstruction)` if the token is a stack operation.
     /// * `None` if the token is not a stack operation.
-    fn parse_stack_operation(&self, token: &str, word_manager: &WordManager) -> Option<ForthInstruction> {
+    fn parse_stack_operation(
+        &self,
+        token: &str,
+        word_manager: &WordManager,
+    ) -> Option<ForthInstruction> {
         if word_manager.is_word_defined(&Word::UserDefined(token.to_string())) {
             return Some(ForthInstruction::DefineWord(DefineWord::Name(
                 token.to_string(),
             )));
         }
-        
+
         match token {
             _ if token.eq_ignore_ascii_case("dup") => Some(ForthInstruction::StackWord(DUP)),
             _ if token.eq_ignore_ascii_case("drop") => Some(ForthInstruction::StackWord(DROP)),
