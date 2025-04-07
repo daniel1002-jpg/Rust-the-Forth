@@ -89,6 +89,7 @@ while IFS= read -r BLOCK; do
                 echo "Test failed for $YAML_FILE at block $BLOCK_NUMBER"
                 echo "Expected stack: $EXPECTED_STACK_LINE"
                 echo "Actual stack: $STACK"
+                TEST_FAILED=true
                 break
             fi
 
