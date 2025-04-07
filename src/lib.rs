@@ -57,7 +57,7 @@ pub fn run(config: Config) -> Result<(), Box<dyn std::error::Error>> {
             Ok(line) => line,
             _ => "Error reading line".to_string(),
         };
-        let tokens = forth.parse_instructions(line_readed);
+        let tokens = forth.parse_instructions(line_readed.to_lowercase());
         // println!("\n");
         // dbg!("tokens: {:?}", &tokens);
         let instructions = tokens;

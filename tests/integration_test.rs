@@ -128,7 +128,7 @@ fn cannot_execute_unknown_word() {
 
     assert_eq!(
         result,
-        Err(ForthError::UnknownWord("UNKNOWN".to_string()).into())
+        Err(ForthError::UnknownWord.into())
     );
 }
 
@@ -143,4 +143,19 @@ fn can_exute_a_simple_instruction() {
     let _ = forth.process_data(instructions);
 
     assert_eq!(forth.get_stack_content(), &expected_result);
+}
+
+#[test]
+fn cannot_execute_invalid_word() {
+    let mut forth: Forth<Sink> = Forth::new(None, None);
+    let invalid_word = String::from(": 1 2 ;");
+    let expected_result = Err(ForthError::InvalidWord.into());
+
+    let instructions = forth.parse_instructions(invalid_word);
+    println!("Instructions: {:?}", instructions);
+    let result = forth.process_data(instructions);
+
+    assert_eq!(
+        result,
+        expected_result);
 }

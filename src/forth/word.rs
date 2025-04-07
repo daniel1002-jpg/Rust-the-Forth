@@ -46,6 +46,12 @@ impl WordManager {
         name: Word,
         body: Vec<ForthInstruction>,
     ) -> Result<(), Error> {
+        if let Word::UserDefined(ref name_str) = name {
+            if !self.is_valid_word_name(name_str) {
+                return Err(ForthError::InvalidWord.into());
+            }
+        }
+
         let end_index = find_end_definition(&body).ok_or(ForthError::InvalidWord)?;
         let word_definition = body.into_iter().take(end_index).collect::<Vec<_>>();
         let mut definition: Vec<Rc<ForthData>> = Vec::new();
@@ -93,7 +99,7 @@ impl WordManager {
                                 expanded_definition.push(Rc::clone(element));
                             }
                         } else {
-                            return Err(ForthError::UnknownWord(name.to_string()).into());
+                            return Err(ForthError::UnknownWord.into());
                         }
                     }
                 }
@@ -140,7 +146,7 @@ impl WordManager {
         while let Some(current_word) = execution_stack.pop() {
             let instructions = match self.words.get(&current_word) {
                 Some(definition) => definition,
-                None => return Err(ForthError::UnknownWord(word_name.to_string()).into()),
+                None => return Err(ForthError::UnknownWord.into()),
             };
 
             // println!("Instructions: {:?}", instructions);
@@ -295,6 +301,14 @@ impl WordManager {
     pub fn get_word_definition(&self, name: &Word) -> Option<&Vec<Rc<ForthData>>> {
         self.words.get(name)
     }
+
+    fn is_valid_word_name(&self, name: &str) -> bool {
+        if name.parse::<i16>().is_ok() {
+            return false;
+        }
+
+        name.chars().all(|c| c.is_alphanumeric() || c.is_ascii_punctuation())
+    }
 }
 
 fn find_end_definition(body: &[ForthInstruction]) -> Option<usize> {
@@ -378,7 +392,7 @@ mod tests {
 
         assert_eq!(
             result,
-            Err(ForthError::UnknownWord("ABS".to_string()).into())
+            Err(ForthError::UnknownWord.into())
         );
     }
 

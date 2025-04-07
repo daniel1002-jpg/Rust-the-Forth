@@ -56,7 +56,7 @@ impl Stack {
 
     /// Push an element into the stack.
     pub fn push(&mut self, element: i16) -> Result<(), Error> {
-        let is_full = self.size > self.capacity;
+        let is_full = self.size >= self.capacity;
         if is_full {
             return Err(StackError::Overflow.into());
         }

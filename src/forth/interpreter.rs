@@ -185,6 +185,8 @@ impl<W: Write> Forth<W> {
                 _ => {}
             }
             // println!("Stack after: {:?}", self.stack.get_stack_content());
+            // println!("Stack capacity: {:?}", self.stack.capacity());
+            // println!("Stack size: {:?}", self.stack.size());
             // println!("{:?}", self.stack);
         }
         Ok(())
@@ -233,7 +235,7 @@ impl<W: Write> Forth<W> {
     /// - `word_name`: The name of the word to be executed.
     fn execute_new_word(&mut self, word_name: &str) -> Result<(), Error> {
         if !self.is_word_defined(&Word::UserDefined(word_name.to_string())) {
-            return Err(ForthError::UnknownWord(word_name.to_string()).into());
+            return Err(ForthError::UnknownWord.into());
         }
 
         self.word_manager.execute_word::<W>(
