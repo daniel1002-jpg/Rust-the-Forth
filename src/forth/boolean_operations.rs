@@ -104,6 +104,10 @@ impl BooleanOperationManager {
             }
         }
     }
+
+    pub fn is_not(&self, operation: &BooleanOperation) -> bool {
+        matches!(operation, BooleanOperation::Not)
+    }
 }
 
 #[cfg(test)]

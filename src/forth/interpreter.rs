@@ -127,12 +127,16 @@ impl<W: Write> Forth<W> {
                     self.execute_new_word(name)?;
                 }
                 ForthInstruction::BooleanOperation(boolean_operation) => {
-                    let operand2 = self.stack.drop()?;
                     let operand1 = self.stack.drop()?;
+                    let operand2 = if self.boolean_manager.is_not(boolean_operation) {
+                        None
+                    } else {
+                        Some(self.stack.drop()?)
+                    };
                     let result = self.boolean_manager.execute_boolean_operation(
                         boolean_operation,
                         operand1,
-                        Some(operand2),
+                        operand2,
                     );
                     self.stack.push(result)?;
                 }

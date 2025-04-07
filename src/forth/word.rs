@@ -167,12 +167,16 @@ impl WordManager {
                         execution_stack.push(Word::UserDefined(name.to_string()));
                     }
                     ForthData::BooleanOperation(boolean_operation) => {
-                        let operand2 = stack.drop()?;
                         let operand1 = stack.drop()?;
+                        let operand2 = if boolean_manager.is_not(boolean_operation) {
+                            None
+                        } else {
+                            Some(stack.drop()?)
+                        };
                         let result = boolean_manager.execute_boolean_operation(
                             boolean_operation,
                             operand1,
-                            Some(operand2),
+                            operand2,
                         );
                         stack.push(result)?;
                     }
