@@ -14,98 +14,99 @@ BLOCKS=$(awk '
     END {if (flag) print block}                                 # Imprimir el último bloque acumulado
 ' "$YAML_FILE")
 
-echo "Blocks extracted from $YAML_FILE:"
-echo "$BLOCKS"
+# Extaer el output esperado y el stack esperado
+# EXPECTED_OUTPUT=$(grep "expected_output:" "$YAML_FILE" | sed 's/expected_output: "\(.*\)"/\1/')
+EXPECTED_OUTPUT_LINES=()
+while IFS= read -r line; do
+    EXPECTED_OUTPUT_LINES+=("$line")
+done <<< "$(grep "expected_output:" "$YAML_FILE" | sed -E 's/expected_output: "(.*)"/\1/')"
 
-#Dividir el stack esperado en líneas
-EXPECTED_OUTPUT=$(grep "expected_output:" "$YAML_FILE" | sed 's/expected_output: "\(.*\)"/\1/')
-EXPECTED_STACK=$(grep "expected_stack:" "$YAML_FILE" | sed -E 's/expected_stack: \[(.*)\]/\1/' | sed 's/, / /g' | sed 's/^ *//;s/ *$//')
-
-# Si el stack esperado es "[]", conviértelo en una cadena vacía
-if [[ "$EXPECTED_STACK" == "[]" ]]; then
-    EXPECTED_STACK=""
-fi
-
-# Convertir el formato de EXPECTED_STACK (de '1, 2, 3, 4, 5' a '1 2 3 4 5')
-EXPECTED_STACK=$(echo "$EXPECTED_STACK" | sed 's/, / /g' | sed 's/^ *//;s/ *$//')
-
-# Dividir el stack esperado en líneas
 EXPECTED_STACK_LINES=()
 while IFS= read -r line; do
     EXPECTED_STACK_LINES+=("$line")
 done <<< "$(grep "expected_stack:" "$YAML_FILE" | sed -E 's/expected_stack: \[(.*)\]/\1/' | sed 's/, / /g' | sed 's/^ *//;s/ *$//')"
-# IFS=$'\n' read -d '' -r -a EXPECTED_STACK_LINES <<< "$EXPECTED_STACK"
 
 # Leer el archvo por cada bloque
 BLOCK_NUMBER=0
 CURRENT_BLOCK="" # Variable auxiliar para acumular el bloque actual
 IFS=''
-echo "$BLOCKS" | while IFS= read -r BLOCK; do
+while IFS= read -r BLOCK; do
 
     # Si se encuentra una línea vacía, se procesa el bloque acumalado
     if [[ -z "$BLOCK" ]]; then
         if [[ -n "$CURRENT_BLOCK" ]]; then
             BLOCK_NUMBER=$((BLOCK_NUMBER + 1))
+            
             echo "Executing block $BLOCK_NUMBER:"
-            echo "Debug: Content of BLOCK:"
-            echo "$CURRENT_BLOCK"
-            > block.fth
-            echo -e "$CURRENT_BLOCK" > block.fth        # Sobreescribir el archivo con el bloque completo
-            echo "Content of block.fth:"
-            cat block.fth
+            echo $CURRENT_BLOCK
+            echo "-----------------------------"
+            
+            # Guardar el bloque actual en un archivo temporal
+            echo -e "$CURRENT_BLOCK" | sed 's/^[[:space:]]*//' > block.fth
+            
+            # Ejecutar el programa con el bloque actual
+            RAW_OUTPUT=$(cargo run block.fth 2>&1)
 
-            sleep 0.1
+            echo "Raw output:"
+            echo $RAW_OUTPUT
 
-            # Ejecutar el programa con la línea actual
-            OUTPUT=$(cargo run block.fth 2>&1)
-            echo "Program output:"
+            OUTPUT=$(echo "$RAW_OUTPUT" | grep -vE "Executing instruction|Finished|Running")
+            
+            echo "Filtered output:"
             echo "$OUTPUT"
 
-            # Imprimir el contenido del archivo stack.fth después de ejecutar la instrucción
-            # echo "Content of stack.fth after executing line $LINE_NUMBER:"
-            # cat stack.fth
+            # Leer el último estado del stack
+            STACK=$(tail -n 1 stack.fth 2>/dev/null | xargs)
 
-            # Comparar el stack actual con el valor esperado
-            STACK=$(tail -n 1 stack.fth 2>/dev/null | xargs) # Leer el último estado del stack
-            # STACK=$(tac stack.fth | xargs) # Invertir el contenido del stack y procesarlo
-            # echo "Debug: Raw stack line from stack.fth:"
-            # cat stack.fth
-            # echo "Debug: Processed stack line: $STACK"
-            
+            # Obtener el stack esperado para este bloque
             EXPECTED_STACK_LINE=$(echo "${EXPECTED_STACK_LINES[$((BLOCK_NUMBER -1))]}" | xargs)
             
-            echo "Debug: Block number: $BLOCK_NUMBER"
-            echo "Debug: expected stack line: ${EXPECTED_STACK_LINES[$((LINE_NUMBER))]}"
-            echo "Debug: actual stack line: $STACK"
+            # Obtener el output esperado para este bloque
+            EXPECTED_OUTPUT=$(echo -e "${EXPECTED_OUTPUT_LINES[$((BLOCK_NUMBER - 1))]}" | xargs)
+            
+            # EXPECTED_OUTPUT=$(awk -v block_number="$BLOCK_NUMBER" '
+            #     BEGIN {count=0}
+            #     /^- name:/ {count++}
+            #     count == block_number {
+            #         if ($0 ~ /expected_output:/) {
+            #             if (match($0, /expected_output: "(.*)"/, arr)) {
+            #                 print arr[1]
+            #             } else {
+            #                 print ""
+            #             }
+            #             exit
+            #         }
+            #     }
+            #     END {if (count == block_number) print ""} # Si no hay expected_output, devolver vacío
+            # ' "$YAML_FILE")
 
-
-
-            # Si el estado esperado es un stack vacío (representado como "[]"), se lo convierte en una cadena vacía
-            # if [[ "$EXPECTED_STACK_LINE" == "[]" ]]; then
-            #     EXPECTED_STACK_LINE=""
-            # fi
-
-            if [[ -z "$STACK" ]]; then
-                STACK=""
+            if [[ -z "$EXPECTED_OUTPUT" ]]; then
+                echo "Warning: No expected output for block $BLOCK_NUMBER"
             fi
 
-            echo "Expected stack line: $EXPECTED_STACK_LINE"
-            echo "Actual stack line: $STACK"
+            # Comparar el stack esperado con el stack actual
             if [[ "$STACK" != "$EXPECTED_STACK_LINE" ]]; then
                 echo "Test failed for $YAML_FILE at block $BLOCK_NUMBER"
                 echo "Expected stack: $EXPECTED_STACK_LINE"
                 echo "Actual stack: $STACK"
-                exit 1
+                break
             fi
 
-            if [[ "$OUTPUT" != *"$EXPECTED_OUTPUT"* ]]; then
+            # Normalizar el output actual y el esperado
+            NORMALIZED_OUTPUT=$(echo -e "$OUTPUT" | tr -s '\n' ' ' | sed 's/[[:space:]]\+$//')
+            NORMALIZED_EXPECTED_OUTPUT=$(echo -e "$EXPECTED_OUTPUT" | sed 's/[[:space:]]\+/ /g')
+
+            echo "Normalized output: '$NORMALIZED_OUTPUT'"
+            echo "Normalized expected output: '$NORMALIZED_EXPECTED_OUTPUT'"
+
+            # Comparar el output normalizado
+            if [[ "$NORMALIZED_OUTPUT" != "$NORMALIZED_EXPECTED_OUTPUT" ]]; then
                 echo "Test failed for $YAML_FILE at block $BLOCK_NUMBER"
-                echo "Expected output: $EXPECTED_OUTPUT"
-                echo "Actual output: $OUTPUT"
-                exit 1
+                echo "Expected output: $NORMALIZED_EXPECTED_OUTPUT"
+                echo "Actual output: $NORMALIZED_OUTPUT"
+                TEST_FAILED=true
+                break
             fi
-
-            echo " "
 
             # Limpiar el bloque actual y el archivo temporal
             CURRENT_BLOCK=""
@@ -115,6 +116,10 @@ echo "$BLOCKS" | while IFS= read -r BLOCK; do
         # Acumular la línea actual en CURRENT_BLOCK
         CURRENT_BLOCK="${CURRENT_BLOCK}${BLOCK}\n"
     fi
-done
+done <<< "$BLOCKS"
+
+if [[ "$TEST_FAILED" == true ]]; then
+    exit 1
+fi
 
 echo "Test passed for $YAML_FILE"

@@ -73,6 +73,8 @@ impl Parser {
         let tokens = self.tokenize(&input);
         let mut state = ParserState::OutsideDefinition;
 
+        // dbg!(&tokens);
+        // println!("Tokens parsed: {}", tokens.len());
         for token in tokens {
             self.parse_token(token, &mut instructions, &mut state, word_manager);
         }
@@ -91,11 +93,13 @@ impl Parser {
         let mut start = 0;
         let chars: Vec<char> = input.chars().collect();
 
+        // println!("chars: {:?}", chars);
         let mut i = 0;
         while i < chars.len() {
             if chars[i] == '.' && input[i..].starts_with(".\" ") {
                 if start < i {
                     tokens.push(input[start..i].to_string());
+                    // println!("actual tokens: {:?}", tokens);
                 }
                 start = i;
                 i += 2;
@@ -107,6 +111,7 @@ impl Parser {
 
                 if i < chars.len() && chars[i] == '"' {
                     tokens.push(input[start..=i].to_string());
+                    // println!("actual tokens: {:?}", tokens);
                     i += 1;
                 }
                 if in_quotes {
@@ -116,6 +121,7 @@ impl Parser {
             } else if chars[i].is_whitespace() && !in_quotes {
                 if start < i {
                     tokens.push(input[start..i].to_string());
+                    // println!("actual tokens (outside quotes): {:?}", tokens);
                 }
                 start = i + 1;
                 i += 1;
@@ -124,8 +130,10 @@ impl Parser {
                 // println!("chars[i]: {}", chars[i]);
                 if start < i {
                     tokens.push(input[start..i].to_string());
+                    println!("actual tokens: {:?}", tokens);
                 }
                 tokens.push(input[i..=i].to_string());
+                // println!("actual tokens: {:?}", tokens);
                 start = i + 1;
                 i += 1;
             } else {
@@ -451,7 +459,7 @@ impl Parser {
             _ if token.eq_ignore_ascii_case("over") => Some(ForthInstruction::StackWord(OVER)),
             _ if token.eq_ignore_ascii_case("rot") => Some(ForthInstruction::StackWord(ROT)),
             _ => {
-                println!("Unknown stack operation: {}", token);
+                // println!("Unknown stack operation: {}", token);
                 None
             }
         }

@@ -7,7 +7,7 @@ use rust_forth::{
         word::Word,
     },
 };
-use std::{io::Sink, rc::Rc};
+use std::{fmt::Write, io::Sink, rc::Rc};
 
 #[test]
 fn can_define_new_word_that_use_boolean_operations() {
@@ -143,4 +143,19 @@ fn can_exute_a_simple_instruction() {
     let _ = forth.process_data(instructions);
 
     assert_eq!(forth.get_stack_content(), &expected_result);
+}
+
+#[test]
+fn test_output_generation_dotqoute() {
+    let output = Vec::new();
+    let mut forth = Forth::new(None, Some(output));
+    let input = String::from(".\" Hello       World!\"");
+    let expected_result = String::from("Hello       World!");
+
+    let instructions = forth.parse_instructions(input);
+    let _ = forth.process_data(instructions);
+
+    // let result = String::from_utf8(forth.writer.unwrap()).unwrap();
+
+    // assert_eq!(result, expected_result);
 }

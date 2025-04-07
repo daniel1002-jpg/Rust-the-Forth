@@ -8,7 +8,8 @@ fn main() {
 
     if let Ok(config) = config {
         if let Err(e) = rust_forth::run(config) {
-            println!("Error to run program: {}", e);
+            println!("{}", e);
+            // println!("Error to run program: {}", e);
         }
     }
 }

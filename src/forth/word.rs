@@ -197,7 +197,7 @@ impl WordManager {
                     }
                     ForthData::OutputCR => {
                         if let Some(ref mut writer) = writer {
-                            let _ = writeln!(writer);
+                            let _ = write!(writer, "\n");
                             let _ = writer.flush();
                         }
                     }

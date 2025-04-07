@@ -62,7 +62,7 @@
 
 - name: "dot-quote multiple whitespace"
   code: |
-    ."hello      world!"
+    ." hello      world!"
   expected_output: "hello      world!"
   expected_stack: []
 

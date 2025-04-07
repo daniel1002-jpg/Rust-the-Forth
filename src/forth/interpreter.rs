@@ -104,10 +104,10 @@ impl<W: Write> Forth<W> {
     /// # Arguments
     /// - `data`: A vector of Forth instructions to be processed.
     pub fn process_data(&mut self, data: Vec<ForthInstruction>) -> Result<(), Error> {
-        println!("Executing instruction: {:?}", &data);
+        // println!("Executing instruction: {:?}", &data);
 
         for (i, element) in data.iter().enumerate() {
-            println!("Stack before: {:?}", self.stack.get_stack_content());
+            // println!("Stack before: {:?}", self.stack.get_stack_content());
 
             match element {
                 &ForthInstruction::Number(number) => {
@@ -149,7 +149,7 @@ impl<W: Write> Forth<W> {
                 ForthInstruction::OutputDot => {
                     if let Ok(top) = self.stack.drop() {
                         if let Some(writer) = &mut self.writer {
-                            println!("{:?}", top);
+                            // println!("satck top {:?}", top);
                             let _ = write!(writer, "{} ", top);
                             let _ = writer.flush();
                         }
@@ -157,7 +157,7 @@ impl<W: Write> Forth<W> {
                 }
                 ForthInstruction::OutputCR => {
                     if let Some(writer) = &mut self.writer {
-                        let _ = writeln!(writer);
+                        let _ = write!(writer, "\n");
                         let _ = writer.flush();
                     }
                 }
@@ -165,7 +165,7 @@ impl<W: Write> Forth<W> {
                     if let Ok(top) = self.stack.drop() {
                         if let Ok(ascii_char) = u8::try_from(top) {
                             if let Some(writer) = &mut self.writer {
-                                println!("{:?}", ascii_char);
+                                // println!("{:?}", ascii_char);
                                 let _ = write!(writer, "{} ", ascii_char as char);
                                 let _ = writer.flush();
                             }
@@ -180,7 +180,7 @@ impl<W: Write> Forth<W> {
                 }
                 _ => {}
             }
-            println!("Stack after: {:?}", self.stack.get_stack_content());
+            // println!("Stack after: {:?}", self.stack.get_stack_content());
             // println!("{:?}", self.stack);
         }
         Ok(())
