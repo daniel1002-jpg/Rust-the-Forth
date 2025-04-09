@@ -8,7 +8,7 @@ use crate::errors::Error;
 use crate::stack::core::Stack;
 use crate::stack::stack_operations::{StackOperation, execute_stack_operation};
 use std::io::Write;
-use std::rc::Rc;
+// use std::rc::Rc;
 
 /// Forth interpreter
 /// This struct represents a Forth interpreter with a stack, calculator, and word manager.
@@ -108,6 +108,7 @@ impl<W: Write> Forth<W> {
 
         for (i, element) in data.iter().enumerate() {
             // println!("Stack before: {:?}", self.stack.get_stack_content());
+            // println!("Processing element: {:?}", element);
 
             match element {
                 &ForthInstruction::Number(number) => {
@@ -242,7 +243,7 @@ impl<W: Write> Forth<W> {
             &mut self.stack,
             &self.calculator,
             &mut self.boolean_manager,
-            self.writer.as_mut(),
+            &mut self.writer,
             word_name,
         )?;
         Ok(())
@@ -282,17 +283,17 @@ impl<W: Write> Forth<W> {
     /// let _ = forth.process_data(data);
     ///
     /// assert!(forth.is_word_defined(&Word::UserDefined("NEGATE".to_string())));
-    /// let expected_definition = vec![
-    ///     Rc::new(ForthData::Number(-1)),
-    ///     Rc::new(ForthData::Operator("*".to_string())),
-    /// ];
+    /// let expected_definition = Box::new(vec![
+    ///     ForthData::Number(-1),
+    ///     ForthData::Operator("*".to_string()),
+    /// ]);
     /// let actual_definition = forth
-    ///     .get_word_definition(&&Word::UserDefined("NEGATE".to_string()))
+    ///     .get_word_definition(&Word::UserDefined("NEGATE".to_string()))
     ///     .unwrap();
     ///
     /// assert_eq!(*actual_definition, expected_definition);
     /// ```
-    pub fn get_word_definition(&self, word_name: &Word) -> Option<&Vec<Rc<ForthData>>> {
+    pub fn get_word_definition(&mut self, word_name: &Word) -> Option<&Box<Vec<ForthData>>> {
         self.word_manager.get_word_definition(word_name)
     }
 
@@ -425,12 +426,12 @@ mod tests {
         let _ = forth.process_data(data);
 
         assert!(forth.is_word_defined(&Word::UserDefined("NEGATE".to_string())));
-        let expected_definition = vec![
-            Rc::new(ForthData::Number(-1)),
-            Rc::new(ForthData::Operator("*".to_string())),
-        ];
+        let expected_definition = Box::new(vec![
+            ForthData::Number(-1),
+            ForthData::Operator("*".to_string()),
+        ]);
         let actual_definition = forth
-            .get_word_definition(&&Word::UserDefined("NEGATE".to_string()))
+            .get_word_definition(&Word::UserDefined("NEGATE".to_string()))
             .unwrap();
 
         assert_eq!(*actual_definition, expected_definition);

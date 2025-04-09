@@ -55,7 +55,7 @@ process_block() {
     echo "Raw output:"
     echo $RAW_OUTPUT
 
-    OUTPUT=$(echo "$RAW_OUTPUT" | grep -vE "Executing instruction|Finished|Running")
+    OUTPUT=$(echo "$RAW_OUTPUT" | grep -vE "Executing instruction|Finished|Running|Compiling")
     
     echo "Filtered output:"
     echo "$OUTPUT"
@@ -124,6 +124,11 @@ while IFS= read -r BLOCK; do
         # Acumular la línea actual en CURRENT_BLOCK
         CURRENT_BLOCK="${CURRENT_BLOCK}${BLOCK}\n"
     fi
+
+    if [[ "$TEST_FAILED" == true ]]; then
+        exit 1
+    fi
+    
 done <<< "$BLOCKS"
 
 # Procesar el último bloque acumulado si existe

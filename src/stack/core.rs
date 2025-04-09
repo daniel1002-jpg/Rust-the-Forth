@@ -274,7 +274,7 @@ mod tests {
         let mut stack = Stack::new(Some(capacity));
 
         let mut element = 0;
-        while stack.size() <= stack.capacity() {
+        while stack.size() < stack.capacity() {
             let _ = stack.push(element);
             element += 1;
         }
@@ -322,7 +322,7 @@ mod tests {
         let mut stack = Stack::new(Some(capacity));
 
         let mut element = 0;
-        while stack.size() <= stack.capacity() {
+        while stack.size() < stack.capacity() {
             let _ = stack.push(element);
             element += 1;
         }
@@ -377,11 +377,11 @@ mod tests {
 
     #[test]
     fn use_over_action_with_full_stack_shiuld_give_error() {
-        let capacity = 2;
+        let capacity = 10;
         let mut stack = Stack::new(Some(capacity));
 
         let mut element = 0;
-        while stack.size() <= stack.capacity() {
+        while stack.size() < stack.capacity() {
             let _ = stack.push(element);
             element += 1;
         }

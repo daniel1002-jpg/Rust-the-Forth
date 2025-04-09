@@ -7,6 +7,7 @@ pub use forth::boolean_operations::{BooleanOperation, LogicalOperation};
 pub use forth::interpreter::Forth;
 pub use forth::intructions::ForthInstruction;
 use forth::parser::Parser;
+// use forth::word::Word;
 pub use stack::core::Stack;
 
 use crate::errors::Error;
@@ -52,37 +53,115 @@ pub fn run(config: Config) -> Result<(), Box<dyn std::error::Error>> {
     let stack_output = File::create("stack.fth")?;
     let mut stack_writer = io::BufWriter::new(stack_output);
 
-    for line_result in reader.lines() {
-        let line_readed = match line_result {
-            Ok(line) => line,
-            _ => "Error reading line".to_string(),
-        };
-        let tokens = forth.parse_instructions(line_readed.to_lowercase());
-        // println!("\n");
-        // dbg!("tokens: {:?}", &tokens);
-        let instructions = tokens;
-        forth.process_data(instructions)?;
+    let input = reader
+        .lines()
+        .filter_map(|line| line.ok())
+        .map(|line| line.trim().to_string())
+        .filter(|line| !line.is_empty())
+        .collect::<Vec<_>>()
+        .join("\n");
 
+    let unified_input = unify_multiline_definitions(input);
+
+    // println!("concatenated lines: {:?}", &unified_input);
+    for line in unified_input.lines() {
+        // println!("line: {:?}", &line);
+
+        let tokens = forth.parse_instructions(line.to_lowercase());
+
+        // println!("tokens: {:?}", &tokens);
+
+        forth.process_data(tokens)?;
+        // println!("Definition: {:?}", forth.get_word_definition(&Word::UserDefined("dup-twice".to_string())));
         write_stack_output(&forth, &mut stack_writer)?;
-
-        // println!("Line: {:?} success processed", line_readed.clone());
     }
+    // let mut multiple_lines = "".to_string();
+    // for line_result in reader.lines() {
+    //     let line_readed = match line_result {
+    //         Ok(line) => line,
+    //         _ => "Error reading line".to_string(),
+    //     };
 
-    fn write_stack_output<W: Write>(
-        forth: &Forth<W>,
-        stack_writer: &mut BufWriter<File>,
-    ) -> Result<(), io::Error> {
-        let stack_content = forth.get_stack_content();
-        let formatted_stack = stack_content
-            .iter()
-            .map(|x| x.to_string())
-            .collect::<Vec<String>>()
-            .join(" ");
-        writeln!(stack_writer, "{}", formatted_stack)?;
-        Ok(())
-    }
+    //     if line_readed.contains(":") && !line_readed.contains(";") {
+    //         multiple_lines.push_str(&line_readed);
+    //     }
+
+    //     let tokens = if line_readed.contains(";") {
+    //         multiple_lines.push_str(&line_readed);
+    //         forth.parse_instructions(multiple_lines.to_lowercase())
+    //     } else {
+    //         forth.parse_instructions(line_readed.to_lowercase())
+    //     };
+    //     println!("line readed: {:?}", &line_readed);
+    //     println!("multiple lines: {:?}", &multiple_lines);
+
+    //     // let tokens = forth.parse_instructions(line_readed.to_lowercase());
+    //     // println!("\n");
+    //     // dbg!("tokens: {:?}", &tokens);
+    //     let instructions = tokens;
+    //     forth.process_data(instructions)?;
+
+    //     write_stack_output(&forth, &mut stack_writer)?;
+
+    //     // println!("Line: {:?} success processed", line_readed.clone());
+    // }
 
     Ok(())
+}
+
+fn write_stack_output<W: Write>(
+    forth: &Forth<W>,
+    stack_writer: &mut BufWriter<File>,
+) -> Result<(), io::Error> {
+    let stack_content = forth.get_stack_content();
+    let formatted_stack = stack_content
+        .iter()
+        .map(|x| x.to_string())
+        .collect::<Vec<String>>()
+        .join(" ");
+    writeln!(stack_writer, "{}", formatted_stack)?;
+    Ok(())
+}
+
+fn unify_multiline_definitions(input: String) -> String {
+    let mut unified_lines = Vec::new();
+    let mut current_definition = String::new();
+    let mut in_definition = false;
+
+    for line in input.lines() {
+        let trimmed_line = line.trim();
+
+        // println!("trimmed line: {:?}", trimmed_line);
+
+        if trimmed_line.starts_with(":") && trimmed_line.ends_with(";") {
+            unified_lines.push(trimmed_line.to_string());
+            current_definition.clear();
+            in_definition = false;
+        } else if trimmed_line.starts_with(":") {
+            in_definition = true;
+            current_definition.push_str(trimmed_line);
+            current_definition.push(' ');
+        } else if in_definition {
+            current_definition.push_str(trimmed_line);
+            current_definition.push(' ');
+
+            if trimmed_line.ends_with(";") {
+                unified_lines.push(current_definition.trim().to_string());
+                current_definition.clear();
+                in_definition = false;
+            }
+        } else {
+            unified_lines.push(trimmed_line.to_string());
+        }
+    }
+
+    if !current_definition.is_empty() {
+        unified_lines.push(current_definition.trim().to_string());
+    }
+
+    // println!("unified lines: {:?}", &unified_lines);
+
+    unified_lines.join("\n")
 }
 
 #[cfg(test)]

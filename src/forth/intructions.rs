@@ -30,6 +30,7 @@ pub enum ForthData {
     OutpuEmit,
     OutputCR,
     OutputDotQuote(String),
+    DefinitionIndex(usize),
 }
 
 #[derive(Debug, PartialEq)]
