@@ -20,16 +20,15 @@ fn can_define_new_word_that_use_boolean_operations() {
         ForthInstruction::LogicalOperation(LogicalOperation::GreaterThan),
         ForthInstruction::EndDefinition,
     ];
-    let expected_result = Box::new(vec![
+    let expected_result = vec![
         ForthData::Number(0),
         ForthData::LogicalOperation(LogicalOperation::GreaterThan),
-    ]);
+    ];
 
     let _ = forth.process_data(definition);
     let result_recibed = forth.get_word_definition(&Word::UserDefined("IS-POSITIVE".to_string()));
 
     assert_eq!(result_recibed, Some(&expected_result));
-    // assert_eq!(result_recibed, Some(&expected_result));
 }
 
 #[test]
@@ -87,20 +86,6 @@ fn can_define_nested_words_correctly() {
     let result = forth.get_stack_content();
 
     assert_eq!(result, &expected_result);
-
-    // let expected_result = Box::new(vec![
-    //     ForthData::Number(2),
-    //     ForthData::Operator("*".to_string()),
-    // ]);
-
-    // assert_eq!(
-    //     forth.get_word_definition(&Word::UserDefined("QUADRUPLE".to_string())),
-    //     Some(&expected_result)
-    // );
-    // assert_eq!(
-    //     forth.get_word_definition(&Word::UserDefined("QUADRUPLE".to_string())),
-    //     Some(&expected_result)
-    // );
 }
 
 #[test]
@@ -151,7 +136,6 @@ fn cannot_execute_unknown_word() {
 
 #[test]
 fn can_exute_a_simple_instruction() {
-    // let parser = Parser::new();
     let mut forth: Forth<Sink> = Forth::new(None, None);
     let input = String::from("1 2 swap");
     let expected_result = vec![2, 1];
@@ -181,7 +165,7 @@ fn a_word_can_be_defined_on_multiple_lines() {
     let input = String::from(
         ": f\n".to_string() + "if\n" + "if 1 else 2 then\n" + "else\n" + "drop 3\n" + "then ;\n",
     );
-    let expected_result = Box::new(vec![
+    let expected_result = vec![
         ForthData::DefineWord(DefineWord::If),
         ForthData::DefineWord(DefineWord::If),
         ForthData::Number(1),
@@ -192,7 +176,7 @@ fn a_word_can_be_defined_on_multiple_lines() {
         ForthData::StackWord(StackOperation::Drop),
         ForthData::Number(3),
         ForthData::DefineWord(DefineWord::Then),
-    ]);
+    ];
 
     let instructions = forth.parse_instructions(input);
     let _ = forth.process_data(instructions);
@@ -200,5 +184,4 @@ fn a_word_can_be_defined_on_multiple_lines() {
     let result = forth.get_word_definition(&Word::UserDefined("f".to_string()));
 
     assert_eq!(result.unwrap(), &expected_result);
-    // assert_eq!(result.unwrap(), &expected_result);
 }

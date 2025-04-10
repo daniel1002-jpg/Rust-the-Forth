@@ -162,7 +162,7 @@ impl<W: Write> Forth<W> {
                 }
                 ForthInstruction::OutputCR => {
                     if let Some(writer) = &mut self.writer {
-                        let _ = write!(writer, "\n");
+                        let _ = writeln!(writer);
                         let _ = writer.flush();
                     }
                 }
@@ -270,7 +270,7 @@ impl<W: Write> Forth<W> {
     ///# use rust_forth::forth::intructions::DefineWord;
     ///# use rust_forth::forth::word::Word;
     ///# use std::io::Sink;
-    ///# use std::rc::Rc;
+    /// 
     /// let mut forth: Forth<Sink> = Forth::new(None, None);
     /// let data: Vec<ForthInstruction> = vec![
     ///     ForthInstruction::StartDefinition, // start
@@ -283,17 +283,17 @@ impl<W: Write> Forth<W> {
     /// let _ = forth.process_data(data);
     ///
     /// assert!(forth.is_word_defined(&Word::UserDefined("NEGATE".to_string())));
-    /// let expected_definition = Box::new(vec![
+    /// let expected_definition = vec![
     ///     ForthData::Number(-1),
     ///     ForthData::Operator("*".to_string()),
-    /// ]);
+    /// ];
     /// let actual_definition = forth
     ///     .get_word_definition(&Word::UserDefined("NEGATE".to_string()))
     ///     .unwrap();
     ///
     /// assert_eq!(*actual_definition, expected_definition);
     /// ```
-    pub fn get_word_definition(&mut self, word_name: &Word) -> Option<&Box<Vec<ForthData>>> {
+    pub fn get_word_definition(&mut self, word_name: &Word) -> Option<&Vec<ForthData>> {
         self.word_manager.get_word_definition(word_name)
     }
 
@@ -426,10 +426,10 @@ mod tests {
         let _ = forth.process_data(data);
 
         assert!(forth.is_word_defined(&Word::UserDefined("NEGATE".to_string())));
-        let expected_definition = Box::new(vec![
+        let expected_definition = vec![
             ForthData::Number(-1),
             ForthData::Operator("*".to_string()),
-        ]);
+        ];
         let actual_definition = forth
             .get_word_definition(&Word::UserDefined("NEGATE".to_string()))
             .unwrap();

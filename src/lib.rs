@@ -55,7 +55,7 @@ pub fn run(config: Config) -> Result<(), Box<dyn std::error::Error>> {
 
     let input = reader
         .lines()
-        .filter_map(|line| line.ok())
+        .map_while(|line| line.ok())
         .map(|line| line.trim().to_string())
         .filter(|line| !line.is_empty())
         .collect::<Vec<_>>()
