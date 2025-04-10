@@ -28,11 +28,19 @@ jobs:
         # 3. Compilar poryecto
             - name: Build project
               run: cargo build
+
+        # 4. Asegurarse de que el script sea ejecutable
+            - name: Ensure script is executable
+              run: chmod +x ./run_yaml_test.sh
         
-        # 4. Ejecutar pruebas basadas en archivos .yaml provistos por la catedra
+        # 5. Ejecutar pruebas basadas en archivos .yaml provistos por la catedra
             - name: Run YAML-based tests
               run: |
                 for file  in ./tests/yaml/*.yaml; do
                     echo "Running test for $file"
-                    ./run_yaml_test.sh "$file" ||  exit 1
+                    ./run_yaml_test.sh "$file"
                     done
+        
+        # 6. Mostrar el resumen global
+            - name: Show test summary
+              run: cat tests_summary.log

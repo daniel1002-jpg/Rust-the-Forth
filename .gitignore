@@ -2,3 +2,4 @@
 **/*.rs.bk
 Cargo.lock
 block.fth
+tests_summary.log
