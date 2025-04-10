@@ -41,6 +41,36 @@ jobs:
                     ./run_yaml_test.sh "$file"
                     done
         
-        # 6. Mostrar el resumen global
-            - name: Show test summary
+        # 6. Mostrar el resumen acumulado de cada archivo
+            - name: Show accumulated test summary
               run: cat tests_summary.log
+
+        # 7. Generar y mostrar el resumen global
+            - name: Generate global test summary
+              run: |
+                TOTAL_TESTS=0
+                PASSED_TESTS=0
+                FAILED_TESTS=0
+
+                while IFS= read -r line; do
+                    if [[ "$line" == Total\ tests:* ]]; then
+                        TOTAL_TESTS=$((TOTAL_TESTS + ${line##*: }))
+                    elif [[ "$line" == Passed:* ]]; then
+                        PASSED_TESTS=$((PASSED_TESTS + ${line##*: }))
+                    elif [[ "$line" == Failed:* ]]; then
+                        FAILED_TESTS=$((FAILED_TESTS + ${line##*: }))
+                    fi
+                done < tests_summary.log
+
+                echo "-----------------------------------------------"
+                echo "Global Test Summary:"
+                echo "Total tests: $TOTAL_TESTS"
+                echo "Passed: $PASSED_TESTS"
+                echo "Failed: $FAILED_TESTS"
+                echo "-----------------------------------------------"
+
+                if [[ $FAILED_TESTS -gt 0 ]]; then
+                    exit 1
+                fi
+
+            

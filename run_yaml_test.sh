@@ -122,20 +122,20 @@ if [[ -n "$CURRENT_BLOCK" ]]; then
 fi
 
 # Mostrar resumen del archivo
-echo "-----------------------------------------------"
-echo "Summary for $YAML_FILE:"
-echo "Total test: $BLOCK_NUMBER"
-echo "Passed: $PASSED_TESTS"
-echo "Failed: $FAILED_TESTS"
-echo "-----------------------------------------------"
+# echo "-----------------------------------------------"
+# echo "Summary for $YAML_FILE:"
+# echo "Total test: $BLOCK_NUMBER"
+# echo "Passed: $PASSED_TESTS"
+# echo "Failed: $FAILED_TESTS"
+# echo "-----------------------------------------------"
 
 # Actualizar el resumen global
 TOTAL_TESTS=$((TOTAL_TESTS + BLOCK_NUMBER))
 
-# Escribir el resumen global en un archivo
-echo "-----------------------------------------------" > tests_summary.log
-echo "Global Test Summary:" >> tests_summary.log
-echo "Total tests: $TOTAL_TESTS" >> tests_summary.log
+# Acumular el resumen del archivo en el archivo global
+echo "-----------------------------------------------" >> tests_summary.log
+echo "Summary for $YAML_FILE:" >> tests_summary.log
+echo "Total tests: $BLOCK_NUMBER" >> tests_summary.log
 echo "Passed: $PASSED_TESTS" >> tests_summary.log
 echo "Failed: $FAILED_TESTS" >> tests_summary.log
 echo "-----------------------------------------------" >> tests_summary.log
