@@ -4,19 +4,32 @@ use crate::errors::Error;
 /// Default capacity of the stack.
 pub const DEFAULT_CAPACITY: usize = 128;
 
+/// Size of each element in the stack.
+const ELEMENT_SIZE: usize = 2; // i16
+
 /// # Stack struct
 ///
 /// This struct represents a stack data with a fixed capacity.
 ///
 /// ## Fields
 ///
-/// * `capacity` - Field that represents the maximum number of elements that the stack can hold.
+/// - `capacity` - Field that represents the maximum number of elements that the stack can hold.
 ///             The capacity can be defined when crating the stack.     
 ///             If not provided, the default capacity is 128 kb.
 ///
-/// * `size` - Field that represents the current number of elements in the stack.
+/// - `size` - Field that represents the current number of elements in the stack.
 ///
-/// * `data` - Field that holds the elements of the stack.
+/// - `data` - Field that holds the elements of the stack.
+/// 
+/// ## Principal Methods
+/// - `new` - Create a new instance of the stack with a defined capacity.
+/// - `push` - Push an element into the stack.
+/// - `drop` - Remove the last element from the stack.
+/// - `top` - Get the last element from the stack, without removing it.
+/// - `dup` - Duplicate the last element of the stack.
+/// - `swap` - Swap the last two elements of the stack.
+/// - `over` - Duplicate the second element from the top of the stack.
+/// - `rot` - Rotate the top three elements of the stack.
 #[derive(Debug, PartialEq)]
 pub struct Stack {
     capacity: usize,
@@ -27,10 +40,10 @@ pub struct Stack {
 impl Stack {
     /// Create a new intance of the stack with a defined capacity.
     /// If not provided, the default capacity is 128 kb.
+    /// In other words, the default capacity is 64 elements (each element occupies 2 bytes).
     pub fn new(capacity: Option<usize>) -> Self {
         let capacity = capacity.unwrap_or(DEFAULT_CAPACITY);
-        let element_size = 2;
-        let stack_capacity = capacity / element_size;
+        let stack_capacity = capacity / ELEMENT_SIZE;
 
         Stack {
             capacity: stack_capacity,
@@ -55,6 +68,19 @@ impl Stack {
     }
 
     /// Push an element into the stack.
+    /// 
+    /// If the stack is full, it returns an overflow error.
+    /// 
+    /// # Examples
+    /// ```rust
+    /// # use rust_forth::stack::core::Stack;
+    /// 
+    /// let mut stack = Stack::new(None);
+    /// stack.push(1).unwrap();
+    /// stack.push(2).unwrap();
+    /// 
+    /// assert_eq!(stack.size(), 2);
+    /// ```
     pub fn push(&mut self, element: i16) -> Result<(), Error> {
         let is_full = self.size >= self.capacity;
         if is_full {
@@ -66,7 +92,22 @@ impl Stack {
         Ok(())
     }
 
-    /// Remove the last element from the stack.
+    /// Remove (pop) the last element from the stack.
+    /// 
+    /// If the stack is empty, it returns an underflow error.
+    /// 
+    /// # Examples
+    /// ```rust
+    /// # use rust_forth::stack::core::Stack;
+    /// 
+    /// let mut stack = Stack::new(None);
+    /// stack.push(1).unwrap();
+    /// stack.push(2).unwrap();
+    /// let dropped_element = stack.drop().unwrap();
+    /// 
+    /// assert_eq!(stack.size(), 1);
+    /// assert_eq!(dropped_element, 2);
+    /// ```
     pub fn drop(&mut self) -> Result<i16, Error> {
         if self.is_empty() {
             return Err(StackError::Underflow.into());
@@ -78,6 +119,20 @@ impl Stack {
     }
 
     /// Get the last element from the stack, without removing it.
+    /// 
+    /// If the stack is empty, it returns an underflow error.
+    /// 
+    /// # Examples
+    /// ```rust
+    /// # use rust_forth::stack::core::Stack;
+    /// 
+    /// let mut stack = Stack::new(None);
+    /// stack.push(1).unwrap();
+    /// let top = stack.top().unwrap();
+    /// 
+    /// assert_eq!(stack.size(), 1);
+    /// assert_eq!(top, &1);
+    /// ```
     pub fn top(&self) -> Result<&i16, Error> {
         match self.data.last() {
             Some(last) => Ok(last),
@@ -86,6 +141,21 @@ impl Stack {
     }
 
     /// Duplicate the last element of the stack.
+    /// 
+    /// If the stack is empty, it returns an underflow error.
+    /// If the stack is full, it returns an overflow error.
+    /// 
+    /// # Examples
+    /// ```rust
+    /// # use rust_forth::stack::core::Stack;
+    /// 
+    /// let mut stack = Stack::new(None);
+    /// stack.push(1).unwrap();
+    /// stack.dup();
+    /// 
+    /// assert_eq!(stack.size(), 2);
+    /// assert_eq!(stack.get_stack_content(), &[1, 1]);
+    /// ```
     pub fn dup(&mut self) -> Result<(), Error> {
         if self.size >= self.capacity {
             return Err(StackError::Overflow.into());
@@ -100,6 +170,20 @@ impl Stack {
     }
 
     /// Swap the last two elements of the stack.
+    /// 
+    /// If the stack is empty, it returns an underflow error.
+    /// 
+    /// # Examples
+    /// ```rust
+    /// # use rust_forth::stack::core::Stack;
+    /// 
+    /// let mut stack = Stack::new(None);
+    /// stack.push(1).unwrap();
+    /// stack.push(2).unwrap();
+    /// stack.swap().unwrap();
+    /// 
+    /// assert_eq!(stack.get_stack_content(), &[2, 1]);
+    /// ```
     pub fn swap(&mut self) -> Result<(), Error> {
         if self.size < 2 {
             return Err(StackError::Underflow.into());
@@ -113,6 +197,22 @@ impl Stack {
     }
 
     /// Duplicate the second element from the top of the stack.
+    /// 
+    /// If the stack is empty, it returns an underflow error.
+    /// If the stack is full, it returns an overflow error.
+    /// 
+    /// # Examples
+    /// ```rust
+    /// # use rust_forth::stack::core::Stack;
+    /// 
+    /// let mut stack = Stack::new(None);
+    /// stack.push(1).unwrap();
+    /// stack.push(2).unwrap();
+    /// stack.push(3).unwrap();
+    /// stack.over().unwrap();
+    /// 
+    /// assert_eq!(stack.get_stack_content(), &[1, 2, 3, 2]);
+    /// ```
     pub fn over(&mut self) -> Result<(), Error> {
         if self.size < 2 {
             return Err(StackError::Underflow.into());
@@ -128,6 +228,21 @@ impl Stack {
     }
 
     /// Rotate the top three elements of the stack.
+    /// 
+    /// If the stack is empty, it returns an underflow error.
+    /// 
+    /// # Examples
+    /// ```rust
+    /// # use rust_forth::stack::core::Stack;
+    /// 
+    /// let mut stack = Stack::new(None);
+    /// stack.push(1).unwrap();
+    /// stack.push(2).unwrap();
+    /// stack.push(3).unwrap();
+    /// stack.rot().unwrap();
+    /// 
+    /// assert_eq!(stack.get_stack_content(), &[2, 3, 1]);
+    /// ```
     pub fn rot(&mut self) -> Result<(), Error> {
         if self.size < 3 {
             return Err(StackError::Underflow.into());
@@ -149,6 +264,7 @@ impl Stack {
         Ok(())
     }
 
+    /// Get the content of the stack.
     pub fn get_stack_content(&self) -> &Vec<i16> {
         &self.data
     }
@@ -250,11 +366,10 @@ mod tests {
     fn can_create_stack_with_defined_capacity() {
         // stack capacity in bytes
         let capacity = 10;
-        let element_size = 2; // i16
         let stack = Stack::new(Some(capacity));
         // stack capacity expected:
         // capacity / number of bytes an element occupies
-        let expected_capacty = capacity / element_size;
+        let expected_capacty = capacity / ELEMENT_SIZE;
 
         assert_eq!(stack.capacity(), expected_capacty);
     }
@@ -262,8 +377,7 @@ mod tests {
     #[test]
     fn can_create_stack_with_default_capacity() {
         let stack = Stack::new(None);
-        let element_size = 2; // i16
-        let expected_capacty = DEFAULT_CAPACITY / element_size;
+        let expected_capacty = DEFAULT_CAPACITY / ELEMENT_SIZE;
 
         assert_eq!(stack.capacity(), expected_capacty);
     }

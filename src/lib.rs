@@ -7,7 +7,6 @@ pub use forth::boolean_operations::{BooleanOperation, LogicalOperation};
 pub use forth::interpreter::Forth;
 pub use forth::intructions::ForthInstruction;
 use forth::parser::Parser;
-// use forth::word::Word;
 pub use stack::core::Stack;
 
 use crate::errors::Error;
@@ -63,49 +62,11 @@ pub fn run(config: Config) -> Result<(), Box<dyn std::error::Error>> {
 
     let unified_input = unify_multiline_definitions(input);
 
-    // println!("concatenated lines: {:?}", &unified_input);
     for line in unified_input.lines() {
-        // println!("line: {:?}", &line);
-
         let tokens = forth.parse_instructions(line.to_lowercase());
-
-        // println!("tokens: {:?}", &tokens);
-
         forth.process_data(tokens)?;
-        // println!("Definition: {:?}", forth.get_word_definition(&Word::UserDefined("dup-twice".to_string())));
         write_stack_output(&forth, &mut stack_writer)?;
     }
-    // let mut multiple_lines = "".to_string();
-    // for line_result in reader.lines() {
-    //     let line_readed = match line_result {
-    //         Ok(line) => line,
-    //         _ => "Error reading line".to_string(),
-    //     };
-
-    //     if line_readed.contains(":") && !line_readed.contains(";") {
-    //         multiple_lines.push_str(&line_readed);
-    //     }
-
-    //     let tokens = if line_readed.contains(";") {
-    //         multiple_lines.push_str(&line_readed);
-    //         forth.parse_instructions(multiple_lines.to_lowercase())
-    //     } else {
-    //         forth.parse_instructions(line_readed.to_lowercase())
-    //     };
-    //     println!("line readed: {:?}", &line_readed);
-    //     println!("multiple lines: {:?}", &multiple_lines);
-
-    //     // let tokens = forth.parse_instructions(line_readed.to_lowercase());
-    //     // println!("\n");
-    //     // dbg!("tokens: {:?}", &tokens);
-    //     let instructions = tokens;
-    //     forth.process_data(instructions)?;
-
-    //     write_stack_output(&forth, &mut stack_writer)?;
-
-    //     // println!("Line: {:?} success processed", line_readed.clone());
-    // }
-
     Ok(())
 }
 
@@ -130,8 +91,6 @@ fn unify_multiline_definitions(input: String) -> String {
 
     for line in input.lines() {
         let trimmed_line = line.trim();
-
-        // println!("trimmed line: {:?}", trimmed_line);
 
         if trimmed_line.starts_with(":") && trimmed_line.ends_with(";") {
             unified_lines.push(trimmed_line.to_string());
@@ -158,9 +117,6 @@ fn unify_multiline_definitions(input: String) -> String {
     if !current_definition.is_empty() {
         unified_lines.push(current_definition.trim().to_string());
     }
-
-    // println!("unified lines: {:?}", &unified_lines);
-
     unified_lines.join("\n")
 }
 
