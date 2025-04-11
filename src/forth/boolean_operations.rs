@@ -7,6 +7,16 @@
 pub const FORTH_TRUE: i16 = -1;
 pub const FORTH_FALSE: i16 = 0;
 
+/// Constants for boolean operations
+pub const AND: BooleanOperation = BooleanOperation::And;
+pub const OR: BooleanOperation = BooleanOperation::Or;
+pub const NOT: BooleanOperation = BooleanOperation::Not;
+
+/// Constants for logical operations
+pub const LESS_THAN: LogicalOperation = LogicalOperation::LessThan;
+pub const GREATER_THAN: LogicalOperation = LogicalOperation::GreaterThan;
+pub const EQUAL: LogicalOperation = LogicalOperation::Equal;
+
 /// Enumeration for boolean operations.
 /// This enum defines the types of operations that can be performed.
 /// The operations include:

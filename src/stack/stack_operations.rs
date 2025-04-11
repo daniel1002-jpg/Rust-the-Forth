@@ -1,6 +1,13 @@
 use crate::errors::Error;
 use crate::stack::core::Stack;
 
+/// Constants for stack operations
+pub const DUP: StackOperation = StackOperation::Dup;
+pub const DROP: StackOperation = StackOperation::Drop;
+pub const SWAP: StackOperation = StackOperation::Swap;
+pub const OVER: StackOperation = StackOperation::Over;
+pub const ROT: StackOperation = StackOperation::Rot;
+
 /// Enum representing stack operations
 /// such as duplication, dropping, swapping, etc.
 /// Each operation corresponds to a specific action on the stack.

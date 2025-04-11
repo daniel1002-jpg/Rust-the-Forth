@@ -4,7 +4,11 @@ use crate::{
     BooleanOperation, Instruction, LogicalOperation, Stack,
     calculator::operations::Calculator,
     errors::Error,
-    forth::{boolean_operations::BooleanOperationManager, word_data::WordData},
+    forth::{
+        boolean_operations::BooleanOperationManager,
+        output_instructions::{CR, DOT, EMIT, OutputInstruction},
+        word_data::WordData,
+    },
     stack::stack_operations::execute_stack_operation,
 };
 
@@ -93,10 +97,12 @@ impl<W: Write> ExecutionHandler<W> {
             WordData::LogicalOperation(logical_operation) => {
                 self.handle_logical_operation(logical_operation)?
             }
-            WordData::OutputDot => self.handle_output_dot()?,
-            WordData::OutputCR => self.handle_output_cr()?,
-            WordData::OutpuEmit => self.handle_output_emit()?,
-            WordData::OutputDotQuote(string) => self.handle_output_dot_quote(string)?,
+            WordData::Output(DOT) => self.handle_output_dot()?,
+            WordData::Output(CR) => self.handle_output_cr()?,
+            WordData::Output(EMIT) => self.handle_output_emit()?,
+            WordData::Output(OutputInstruction::DotQuote(str)) => {
+                self.handle_output_dot_quote(str)?
+            }
             _ => {}
         }
         Ok(())
@@ -152,11 +158,15 @@ impl<W: Write> ExecutionHandler<W> {
 
     /// Handles the boolean operations.
     fn handle_boolean_operation(&mut self, operation: &BooleanOperation) -> Result<(), Error> {
-        let operand2 = self.stack.drop()?;
         let operand1 = self.stack.drop()?;
-        let result =
-            self.boolean_manager
-                .execute_boolean_operation(operation, operand1, Some(operand2));
+        let operand2 = if self.boolean_manager.is_not(operation) {
+            None
+        } else {
+            Some(self.stack.drop()?)
+        };
+        let result = self
+            .boolean_manager
+            .execute_boolean_operation(operation, operand1, operand2);
         self.stack.push(result)?;
         Ok(())
     }
@@ -175,10 +185,12 @@ impl<W: Write> ExecutionHandler<W> {
     /// Handles the generation output instructions.
     fn handle_generation_output(&mut self, instruction: &Instruction) -> Result<(), Error> {
         match instruction {
-            Instruction::OutputDot => self.handle_output_dot()?,
-            Instruction::OutputCR => self.handle_output_cr()?,
-            Instruction::OutpuEmit => self.handle_output_emit()?,
-            Instruction::OutputDotQuote(string) => self.handle_output_dot_quote(string)?,
+            Instruction::Output(DOT) => self.handle_output_dot()?,
+            Instruction::Output(CR) => self.handle_output_cr()?,
+            Instruction::Output(EMIT) => self.handle_output_emit()?,
+            Instruction::Output(OutputInstruction::DotQuote(str)) => {
+                self.handle_output_dot_quote(str)?
+            }
             _ => {}
         }
         Ok(())
@@ -230,7 +242,7 @@ impl<W: Write> ExecutionHandler<W> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::stack::stack_operations::StackOperation;
+    use crate::stack::stack_operations::{DROP, DUP, OVER, ROT, SWAP};
     use std::io::Sink;
 
     #[test]
@@ -261,13 +273,13 @@ mod tests {
     fn test_handle_manipulate_stack() {
         let mut handler: ExecutionHandler<Sink> = ExecutionHandler::new(None, None);
         let instructions: Vec<Instruction> = vec![
-            Instruction::Number(2),
-            Instruction::Number(4),
-            Instruction::StackWord(StackOperation::Dup),
-            Instruction::StackWord(StackOperation::Rot),
-            Instruction::StackWord(StackOperation::Over),
-            Instruction::StackWord(StackOperation::Swap),
-            Instruction::StackWord(StackOperation::Drop),
+            Instruction::number(2),
+            Instruction::number(4),
+            Instruction::stack_word(DUP),
+            Instruction::stack_word(ROT),
+            Instruction::stack_word(OVER),
+            Instruction::stack_word(SWAP),
+            Instruction::stack_word(DROP),
         ];
         let expected_result = vec![4, 4, 4];
 

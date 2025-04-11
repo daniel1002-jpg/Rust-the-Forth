@@ -1,10 +1,13 @@
 use rust_forth::{
-    Forth, Instruction, LogicalOperation,
+    Forth, Instruction,
     forth::{
-        boolean_operations::FORTH_TRUE, definition_type::DefinitionType, forth_errors::ForthError,
-        word::WordType, word_data::WordData,
+        boolean_operations::{FORTH_TRUE, GREATER_THAN, LESS_THAN},
+        definition_type::{DefinitionType, ELSE, IF, THEN},
+        forth_errors::ForthError,
+        word::WordType,
+        word_data::WordData,
     },
-    stack::stack_operations::StackOperation,
+    stack::stack_operations::DROP,
 };
 use std::io::Sink;
 
@@ -12,15 +15,15 @@ use std::io::Sink;
 fn can_define_new_word_that_use_boolean_operations() {
     let mut forth: Forth<Sink> = Forth::new(None, None);
     let definition = vec![
-        Instruction::StartDefinition,
-        Instruction::DefinitionType(DefinitionType::Name("IS-POSITIVE".to_string())),
-        Instruction::Number(0),
-        Instruction::LogicalOperation(LogicalOperation::GreaterThan),
-        Instruction::EndDefinition,
+        Instruction::start_definition(),
+        Instruction::definition_type(DefinitionType::name("IS-POSITIVE".to_string())),
+        Instruction::number(0),
+        Instruction::logical_operation(GREATER_THAN),
+        Instruction::end_definition(),
     ];
     let expected_result = vec![
-        WordData::Number(0),
-        WordData::LogicalOperation(LogicalOperation::GreaterThan),
+        WordData::number(0),
+        WordData::logical_operation(GREATER_THAN),
     ];
 
     let _ = forth.process_instructions(definition);
@@ -34,15 +37,15 @@ fn can_define_new_word_that_use_boolean_operations() {
 fn can_execute_a_simple_word() {
     let mut forth: Forth<Sink> = Forth::new(None, None);
     let definition = vec![
-        Instruction::StartDefinition,
-        Instruction::DefinitionType(DefinitionType::Name("DOUBLE".to_string())),
-        Instruction::Number(2),
-        Instruction::Operator("*".to_string()),
-        Instruction::EndDefinition,
+        Instruction::start_definition(),
+        Instruction::definition_type(DefinitionType::name("DOUBLE".to_string())),
+        Instruction::number(2),
+        Instruction::operator("*".to_string()),
+        Instruction::end_definition(),
     ];
     let data = vec![
-        Instruction::Number(5),
-        Instruction::DefinitionType(DefinitionType::Name("DOUBLE".to_string())),
+        Instruction::number(5),
+        Instruction::definition_type(DefinitionType::name("DOUBLE".to_string())),
     ];
     let expected_result = Ok(&10);
 
@@ -56,27 +59,27 @@ fn can_execute_a_simple_word() {
 fn can_define_nested_words_correctly() {
     let mut forth: Forth<Sink> = Forth::new(None, None);
     let double_defintion = vec![
-        Instruction::StartDefinition,
-        Instruction::DefinitionType(DefinitionType::Name("DOUBLE".to_string())),
-        Instruction::Number(2),
-        Instruction::Operator("*".to_string()),
-        Instruction::EndDefinition,
+        Instruction::start_definition(),
+        Instruction::definition_type(DefinitionType::name("DOUBLE".to_string())),
+        Instruction::number(2),
+        Instruction::operator("*".to_string()),
+        Instruction::end_definition(),
     ];
     let _ = forth.process_instructions(double_defintion);
 
     let quadruple_definition = vec![
-        Instruction::StartDefinition,
-        Instruction::DefinitionType(DefinitionType::Name("QUADRUPLE".to_string())),
-        Instruction::DefinitionType(DefinitionType::Name("DOUBLE".to_string())),
-        Instruction::DefinitionType(DefinitionType::Name("DOUBLE".to_string())),
-        Instruction::EndDefinition,
+        Instruction::start_definition(),
+        Instruction::definition_type(DefinitionType::name("QUADRUPLE".to_string())),
+        Instruction::definition_type(DefinitionType::name("DOUBLE".to_string())),
+        Instruction::definition_type(DefinitionType::name("DOUBLE".to_string())),
+        Instruction::end_definition(),
     ];
 
     let _ = forth.process_instructions(quadruple_definition);
 
     let instruction = vec![
-        Instruction::Number(2),
-        Instruction::DefinitionType(DefinitionType::Name("QUADRUPLE".to_string())),
+        Instruction::number(2),
+        Instruction::definition_type(DefinitionType::name("QUADRUPLE".to_string())),
     ];
 
     let expected_result = vec![8];
@@ -91,11 +94,11 @@ fn can_define_nested_words_correctly() {
 fn can_execute_arithmetic_operations() {
     let mut forth: Forth<Sink> = Forth::new(None, None);
     let operations = vec![
-        Instruction::Number(5),
-        Instruction::Number(3),
-        Instruction::Operator("+".to_string()),
-        Instruction::Number(2),
-        Instruction::Operator("*".to_string()),
+        Instruction::number(5),
+        Instruction::number(3),
+        Instruction::operator("+".to_string()),
+        Instruction::number(2),
+        Instruction::operator("*".to_string()),
     ];
     let expected_result = Ok(&16);
 
@@ -108,11 +111,11 @@ fn can_execute_arithmetic_operations() {
 fn can_execute_logical_operations() {
     let mut forth: Forth<Sink> = Forth::new(None, None);
     let operations = vec![
-        Instruction::Number(5),
-        Instruction::Number(3),
-        Instruction::LogicalOperation(LogicalOperation::GreaterThan),
-        Instruction::Number(2),
-        Instruction::LogicalOperation(LogicalOperation::LessThan),
+        Instruction::number(5),
+        Instruction::number(3),
+        Instruction::logical_operation(GREATER_THAN),
+        Instruction::number(2),
+        Instruction::logical_operation(LESS_THAN),
     ];
     let expected_result = Ok(&FORTH_TRUE);
 
@@ -124,7 +127,7 @@ fn can_execute_logical_operations() {
 #[test]
 fn cannot_execute_unknown_word() {
     let mut forth: Forth<Sink> = Forth::new(None, None);
-    let unknown_word = vec![Instruction::DefinitionType(DefinitionType::Name(
+    let unknown_word = vec![Instruction::definition_type(DefinitionType::name(
         "UNKNOWN".to_string(),
     ))];
 
@@ -152,7 +155,6 @@ fn cannot_execute_invalid_word() {
     let expected_result = Err(ForthError::InvalidWord.into());
 
     let instructions = forth.parse_instructions(invalid_word);
-    println!("Instructions: {:?}", instructions);
     let result = forth.process_instructions(instructions);
 
     assert_eq!(result, expected_result);
@@ -169,16 +171,16 @@ fn a_word_can_be_defined_on_multiple_lines() {
       then ;"
         .to_string();
     let expected_result = vec![
-        WordData::DefinitionType(DefinitionType::If),
-        WordData::DefinitionType(DefinitionType::If),
-        WordData::Number(1),
-        WordData::DefinitionType(DefinitionType::Else),
-        WordData::Number(2),
-        WordData::DefinitionType(DefinitionType::Then),
-        WordData::DefinitionType(DefinitionType::Else),
-        WordData::StackWord(StackOperation::Drop),
-        WordData::Number(3),
-        WordData::DefinitionType(DefinitionType::Then),
+        WordData::definition_type(IF),
+        WordData::definition_type(IF),
+        WordData::number(1),
+        WordData::definition_type(ELSE),
+        WordData::number(2),
+        WordData::definition_type(THEN),
+        WordData::definition_type(ELSE),
+        WordData::stack_word(DROP),
+        WordData::number(3),
+        WordData::definition_type(THEN),
     ];
 
     let instructions = forth.parse_instructions(input);

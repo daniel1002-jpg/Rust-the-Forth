@@ -3,7 +3,6 @@ use std::io::Write;
 use std::vec;
 
 use crate::errors::Error;
-use crate::forth::boolean_operations::{FORTH_FALSE, FORTH_TRUE};
 use crate::forth::definition_type::DefinitionType;
 use crate::forth::forth_errors::ForthError;
 use crate::forth::intruction::Instruction;
@@ -12,10 +11,9 @@ use crate::handler::instructions_handler::ExecutionHandler;
 use crate::stack::stack_operations::StackOperation;
 use crate::{BooleanOperation, LogicalOperation};
 
-/// Constants that represents conditional words in Forth
-const CONDITIONAL_IF: WordData = WordData::DefinitionType(DefinitionType::If);
-const CONDITIONAL_THEN: WordData = WordData::DefinitionType(DefinitionType::Then);
-const CONDITIONAL_ELSE: WordData = WordData::DefinitionType(DefinitionType::Else);
+use super::boolean_operations::{FORTH_FALSE, FORTH_TRUE};
+use super::definition_type::{ELSE, IF, THEN};
+use super::output_instructions::{CR, DOT, EMIT, OutputInstruction};
 
 /// Enum that represents a word in the Forth language.
 /// It can be either a predefined word (like "DUP") or a user-defined word (like "MY_WORD").
@@ -118,24 +116,21 @@ impl WordDefinitionManager {
             Instruction::DefinitionType(define_word) => self.convert_define_word(define_word),
             Instruction::BooleanOperation(bool_op) => self.convert_boolean_operation(bool_op),
             Instruction::LogicalOperation(log_op) => self.convert_logical_operation(log_op),
-            Instruction::OutputDot
-            | Instruction::OutpuEmit
-            | Instruction::OutputCR
-            | Instruction::OutputDotQuote(_) => self.convert_output_instruction(instruction),
+            Instruction::Output(output) => self.convert_output_instruction(output),
             _ => Ok(vec![]),
         }
     }
 
     fn convert_number(&self, number: i16) -> Result<Vec<WordData>, Error> {
-        Ok(vec![WordData::Number(number)])
+        Ok(vec![WordData::number(number)])
     }
 
     fn convert_operator(&self, operator: String) -> Result<Vec<WordData>, Error> {
-        Ok(vec![WordData::Operator(operator)])
+        Ok(vec![WordData::operator(operator)])
     }
 
     fn convert_stack_word(&self, stack_word: StackOperation) -> Result<Vec<WordData>, Error> {
-        Ok(vec![WordData::StackWord(stack_word)])
+        Ok(vec![WordData::stack_word(stack_word)])
     }
 
     fn convert_define_word(&self, define_word: DefinitionType) -> Result<Vec<WordData>, Error> {
@@ -148,30 +143,30 @@ impl WordDefinitionManager {
                     }
                 }
             }
-            DefinitionType::If => definition.push(CONDITIONAL_IF),
-            DefinitionType::Then => definition.push(CONDITIONAL_THEN),
-            DefinitionType::Else => definition.push(CONDITIONAL_ELSE),
+            IF | THEN | ELSE => definition.push(WordData::definition_type(define_word)),
         }
         Ok(definition)
     }
 
     fn convert_boolean_operation(&self, bool_op: BooleanOperation) -> Result<Vec<WordData>, Error> {
-        Ok(vec![WordData::BooleanOperation(bool_op)])
+        Ok(vec![WordData::boolean_operation(bool_op)])
     }
 
     fn convert_logical_operation(&self, log_op: LogicalOperation) -> Result<Vec<WordData>, Error> {
-        Ok(vec![WordData::LogicalOperation(log_op)])
+        Ok(vec![WordData::logical_operation(log_op)])
     }
 
-    fn convert_output_instruction(&self, instruction: Instruction) -> Result<Vec<WordData>, Error> {
+    fn convert_output_instruction(
+        &self,
+        instruction: OutputInstruction,
+    ) -> Result<Vec<WordData>, Error> {
         match instruction {
-            Instruction::OutputDot => Ok(vec![WordData::OutputDot]),
-            Instruction::OutpuEmit => Ok(vec![WordData::OutpuEmit]),
-            Instruction::OutputCR => Ok(vec![WordData::OutputCR]),
-            Instruction::OutputDotQuote(string) => {
-                Ok(vec![WordData::OutputDotQuote(string.to_string())])
+            DOT => Ok(vec![WordData::output(DOT)]),
+            EMIT => Ok(vec![WordData::output(EMIT)]),
+            CR => Ok(vec![WordData::output(CR)]),
+            OutputInstruction::DotQuote(str) => {
+                Ok(vec![WordData::output(OutputInstruction::dot_quote(str))])
             }
-            _ => Ok(vec![]),
         }
     }
 
@@ -242,15 +237,15 @@ impl WordDefinitionManager {
         let mut nesting_level = 0;
         for (offset, instruction) in instructions.iter().enumerate() {
             match *instruction {
-                CONDITIONAL_IF => nesting_level += 1,
-                CONDITIONAL_THEN => {
-                    if nesting_level == 0 && target == CONDITIONAL_THEN {
+                WordData::DefinitionType(IF) => nesting_level += 1,
+                WordData::DefinitionType(THEN) => {
+                    if nesting_level == 0 && target == WordData::DefinitionType(THEN) {
                         return Some(start + offset);
                     }
                     nesting_level -= 1;
                 }
-                CONDITIONAL_ELSE => {
-                    if nesting_level == 0 && target == CONDITIONAL_ELSE {
+                WordData::DefinitionType(ELSE) => {
+                    if nesting_level == 0 && target == WordData::DefinitionType(ELSE) {
                         return Some(start + offset);
                     }
                 }
@@ -285,15 +280,15 @@ impl WordDefinitionManager {
                 WordData::DefinitionIndex(index) => {
                     self.execute_instruction(handler, *index, 0)?;
                 }
-                WordData::DefinitionType(DefinitionType::If) => {
+                WordData::DefinitionType(IF) => {
                     i = self.execute_if(handler, def_index, i)?;
                 }
-                WordData::DefinitionType(DefinitionType::Else) => {
+                WordData::DefinitionType(ELSE) => {
                     if self.nesting_level > 0 {
                         break;
                     }
                 }
-                WordData::DefinitionType(DefinitionType::Then) => {
+                WordData::DefinitionType(THEN) => {
                     self.execute_then()?;
                     if self.nesting_level > 0 {
                         break;
@@ -313,10 +308,16 @@ impl WordDefinitionManager {
         def_index: usize,
         instruction_index: usize,
     ) -> Result<usize, Error> {
-        let then_index =
-            self.find_instruction_index(def_index, instruction_index + 1, CONDITIONAL_THEN);
-        let else_index =
-            self.find_instruction_index(def_index, instruction_index + 1, CONDITIONAL_ELSE);
+        let then_index = self.find_instruction_index(
+            def_index,
+            instruction_index + 1,
+            WordData::DefinitionType(THEN),
+        );
+        let else_index = self.find_instruction_index(
+            def_index,
+            instruction_index + 1,
+            WordData::DefinitionType(ELSE),
+        );
         let condition = handler.handle_drop_element()?;
 
         if let Some(then_index) = then_index {
@@ -377,20 +378,19 @@ fn find_end_definition(body: &[Instruction]) -> Option<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::forth::boolean_operations::LogicalOperation;
+    use crate::forth::boolean_operations::EQUAL;
     use crate::forth::intruction::Instruction;
     use std::io::Sink;
 
     #[test]
     fn can_define_new_words() {
         let mut word_manager = WordDefinitionManager::new();
-        // let mut stack = Stack::new(None);
         let data: Vec<Instruction> = vec![
-            Instruction::Number(-1),
-            Instruction::Operator("*".to_string()),
-            Instruction::EndDefinition, // end
+            Instruction::number(-1),
+            Instruction::operator("*".to_string()),
+            Instruction::end_definition(), // end
         ];
-        let expected_result = vec![WordData::Number(-1), WordData::Operator("*".to_string())];
+        let expected_result = vec![WordData::number(-1), WordData::operator("*".to_string())];
 
         word_manager
             .define_new_word(WordType::UserDefined("NEGATE".to_string()), data)
@@ -408,9 +408,9 @@ mod tests {
         let mut word_manager = WordDefinitionManager::new();
         let mut handler: ExecutionHandler<Sink> = ExecutionHandler::new(None, None);
         let word: Vec<Instruction> = vec![
-            Instruction::Number(-1),
-            Instruction::Operator("*".to_string()),
-            Instruction::EndDefinition, // end
+            Instruction::number(-1),
+            Instruction::operator("*".to_string()),
+            Instruction::end_definition(), // end
         ];
         let expected_result = [10];
 
@@ -426,9 +426,9 @@ mod tests {
         let mut word_manager = WordDefinitionManager::new();
         let mut handler: ExecutionHandler<Sink> = ExecutionHandler::new(None, None);
         let word: Vec<Instruction> = vec![
-            Instruction::Number(-1),
-            Instruction::Operator("*".to_string()),
-            Instruction::EndDefinition, // end
+            Instruction::number(-1),
+            Instruction::operator("*".to_string()),
+            Instruction::end_definition(), // end
         ];
         let _ = word_manager.define_new_word(WordType::UserDefined("NEGATE".to_string()), word);
 
@@ -441,10 +441,10 @@ mod tests {
     fn can_define_word_that_generate_output() {
         let mut word_manager = WordDefinitionManager::new();
         let word: Vec<Instruction> = vec![
-            Instruction::OutpuEmit,
-            Instruction::EndDefinition, // end
+            Instruction::output(EMIT),
+            Instruction::end_definition(), // end
         ];
-        let expected_result = vec![WordData::OutpuEmit];
+        let expected_result = vec![WordData::output(EMIT)];
 
         let _ = word_manager.define_new_word(WordType::UserDefined("TO-ASCCI".to_string()), word);
         let result =
@@ -459,8 +459,8 @@ mod tests {
         let output = Vec::new();
         let mut handler: ExecutionHandler<Vec<u8>> = ExecutionHandler::new(None, Some(output));
         let word: Vec<Instruction> = vec![
-            Instruction::OutputDotQuote("Hello".to_string()),
-            Instruction::EndDefinition, // end
+            Instruction::output(OutputInstruction::dot_quote("Hello".to_string())),
+            Instruction::end_definition(), // end
         ];
         let expected_result = "Hello ".to_string();
 
@@ -476,19 +476,19 @@ mod tests {
     fn can_define_word_that_contains_conditionals() {
         let mut word_manger = WordDefinitionManager::new();
         let word = vec![
-            Instruction::Number(0),
-            Instruction::LogicalOperation(LogicalOperation::Equal),
-            Instruction::DefinitionType(DefinitionType::If),
-            Instruction::OutputDotQuote("Is Zero".to_string()),
-            Instruction::DefinitionType(DefinitionType::Then),
-            Instruction::EndDefinition,
+            Instruction::number(0),
+            Instruction::logical_operation(EQUAL),
+            Instruction::definition_type(IF),
+            Instruction::output(OutputInstruction::dot_quote("Is Zero".to_string())),
+            Instruction::definition_type(THEN),
+            Instruction::end_definition(),
         ];
         let expected_result = vec![
-            WordData::Number(0),
-            WordData::LogicalOperation(LogicalOperation::Equal),
-            WordData::DefinitionType(DefinitionType::If),
-            WordData::OutputDotQuote("Is Zero".to_string()),
-            WordData::DefinitionType(DefinitionType::Then),
+            WordData::number(0),
+            WordData::logical_operation(EQUAL),
+            WordData::definition_type(IF),
+            WordData::output(OutputInstruction::dot_quote("Is Zero".to_string())),
+            WordData::definition_type(THEN),
         ];
 
         let _ = word_manger.define_new_word(WordType::UserDefined("is-zero?".to_string()), word);
@@ -504,14 +504,14 @@ mod tests {
         let output = Vec::new();
         let mut handler: ExecutionHandler<Vec<u8>> = ExecutionHandler::new(None, Some(output));
         let word: Vec<Instruction> = vec![
-            Instruction::Number(0),
-            Instruction::LogicalOperation(LogicalOperation::Equal),
-            Instruction::DefinitionType(DefinitionType::If),
-            Instruction::OutputDotQuote("Is Zero".to_string()),
-            Instruction::DefinitionType(DefinitionType::Else),
-            Instruction::OutputDotQuote("Is Not Zero".to_string()),
-            Instruction::DefinitionType(DefinitionType::Then),
-            Instruction::EndDefinition,
+            Instruction::number(0),
+            Instruction::logical_operation(EQUAL),
+            Instruction::definition_type(IF),
+            Instruction::output(OutputInstruction::dot_quote("Is Zero".to_string())),
+            Instruction::definition_type(ELSE),
+            Instruction::output(OutputInstruction::dot_quote("Is Not Zero".to_string())),
+            Instruction::definition_type(THEN),
+            Instruction::end_definition(),
         ];
         let expected_result = "Is Not Zero ".to_string();
 
@@ -527,13 +527,14 @@ mod tests {
     fn test_non_transitive() {
         let mut word_manager = WordDefinitionManager::new();
         let mut handler: ExecutionHandler<Sink> = ExecutionHandler::new(None, None);
-        let word_foo: Vec<Instruction> = vec![Instruction::Number(5), Instruction::EndDefinition];
+        let word_foo: Vec<Instruction> =
+            vec![Instruction::number(5), Instruction::end_definition()];
         let word_bar: Vec<Instruction> = vec![
-            Instruction::DefinitionType(DefinitionType::Name("foo".to_string())),
-            Instruction::EndDefinition,
+            Instruction::definition_type(DefinitionType::name("foo".to_string())),
+            Instruction::end_definition(),
         ];
         let redefinition_foo: Vec<Instruction> =
-            vec![Instruction::Number(6), Instruction::EndDefinition];
+            vec![Instruction::number(6), Instruction::end_definition()];
         let expected_result = vec![5, 6];
 
         let _ = word_manager.define_new_word(WordType::UserDefined("foo".to_string()), word_foo);
@@ -554,10 +555,10 @@ mod tests {
         let mut word_manager = WordDefinitionManager::new();
         let mut handler: ExecutionHandler<Sink> = ExecutionHandler::new(None, None);
         let word: Vec<Instruction> = vec![
-            Instruction::DefinitionType(DefinitionType::If),
-            Instruction::Number(2),
-            Instruction::DefinitionType(DefinitionType::Then),
-            Instruction::EndDefinition,
+            Instruction::definition_type(IF),
+            Instruction::number(2),
+            Instruction::definition_type(THEN),
+            Instruction::end_definition(),
         ];
         let expected_result = vec![2];
 

@@ -1,27 +1,11 @@
 use crate::errors::Error;
 
-use super::definition_type::DefinitionType;
+use super::boolean_operations::{AND, EQUAL, GREATER_THAN, LESS_THAN, NOT, OR};
+use super::definition_type::{DefinitionType, ELSE, IF, THEN};
+use super::output_instructions::{CR, DOT, EMIT, OutputInstruction};
 use super::word::{WordDefinitionManager, WordType};
-use crate::forth::boolean_operations::{BooleanOperation, LogicalOperation};
 use crate::forth::intruction::Instruction;
-use crate::stack::stack_operations::StackOperation;
-
-/// Constants for logical operations
-pub const LESS_THAN: LogicalOperation = LogicalOperation::LessThan;
-pub const GREATER_THAN: LogicalOperation = LogicalOperation::GreaterThan;
-pub const EQUAL: LogicalOperation = LogicalOperation::Equal;
-
-/// Constants for boolean operations
-pub const AND: BooleanOperation = BooleanOperation::And;
-pub const OR: BooleanOperation = BooleanOperation::Or;
-pub const NOT: BooleanOperation = BooleanOperation::Not;
-
-/// Constants for stack operations
-pub const DUP: StackOperation = StackOperation::Dup;
-pub const DROP: StackOperation = StackOperation::Drop;
-pub const SWAP: StackOperation = StackOperation::Swap;
-pub const OVER: StackOperation = StackOperation::Over;
-pub const ROT: StackOperation = StackOperation::Rot;
+use crate::stack::stack_operations::{DROP, DUP, OVER, ROT, SWAP};
 
 /// ParserState enum to represent the state of the parser
 /// This enum is used to track whether the parser is currently inside a definition,
@@ -64,7 +48,7 @@ impl Parser {
     /// ```
     ///# use rust_forth::forth::parser::Parser;
     ///# use rust_forth::forth::intruction::Instruction;
-    /// use rust_forth::forth::word::WordDefinitionManager;
+    ///# use rust_forth::forth::word::WordDefinitionManager;
     /// let parser = Parser::new();
     /// let word_manager = WordDefinitionManager::new();
     /// let input = String::from("1 2 +");
@@ -170,31 +154,33 @@ impl Parser {
         match state {
             ParserState::OutsideDefinition => match token.as_str() {
                 ":" => {
-                    instructions.push(Instruction::StartDefinition);
+                    instructions.push(Instruction::start_definition());
                     *state = ParserState::ParsingWordName;
                 }
-                ";" => instructions.push(Instruction::EndDefinition),
-                "." => instructions.push(Instruction::OutputDot),
+                ";" => instructions.push(Instruction::end_definition()),
+                "." => instructions.push(Instruction::output(DOT)),
                 _ if token.eq_ignore_ascii_case("emit") => {
-                    instructions.push(Instruction::OutpuEmit);
+                    instructions.push(Instruction::output(EMIT));
                 }
-                _ if token.eq_ignore_ascii_case("cr") => instructions.push(Instruction::OutputCR),
+                _ if token.eq_ignore_ascii_case("cr") => instructions.push(Instruction::output(CR)),
                 _ if token.starts_with('.') && token.ends_with('"') => {
                     let quoted_string = &token[3..token.len() - 1];
-                    instructions.push(Instruction::OutputDotQuote(quoted_string.to_string()));
+                    instructions.push(Instruction::output(OutputInstruction::dot_quote(
+                        quoted_string.to_string(),
+                    )));
                 }
                 _ if self.is_number(token.to_string()) => {
                     if let Ok(parsed_num) = token.parse::<i16>() {
-                        instructions.push(Instruction::Number(parsed_num));
+                        instructions.push(Instruction::number(parsed_num));
                     }
                 }
                 _ if self.is_operator(token.to_string()) => {
                     if word_manager.is_word_defined(&WordType::UserDefined(token.to_string())) {
-                        instructions.push(Instruction::DefinitionType(DefinitionType::Name(
-                            token.to_string().to_lowercase(),
+                        instructions.push(Instruction::definition_type(DefinitionType::Name(
+                            token.to_lowercase().to_string(),
                         )));
                     } else {
-                        instructions.push(Instruction::Operator(token));
+                        instructions.push(Instruction::operator(token));
                     }
                 }
                 _ if self.parse_stack_operation(&token, word_manager).is_some() => {
@@ -220,35 +206,37 @@ impl Parser {
                 _ => {}
             },
             ParserState::ParsingWordName => {
-                instructions.push(Instruction::DefinitionType(DefinitionType::Name(token)));
+                instructions.push(Instruction::definition_type(DefinitionType::name(token)));
                 *state = ParserState::InsideDefinition;
             }
             ParserState::InsideDefinition => match token.as_str() {
                 ";" => {
-                    instructions.push(Instruction::EndDefinition);
+                    instructions.push(Instruction::end_definition());
                     *state = ParserState::OutsideDefinition;
                 }
-                "." => instructions.push(Instruction::OutputDot),
+                "." => instructions.push(Instruction::output(DOT)),
                 _ if token.eq_ignore_ascii_case("emit") => {
-                    instructions.push(Instruction::OutpuEmit);
+                    instructions.push(Instruction::output(EMIT));
                 }
-                _ if token.eq_ignore_ascii_case("cr") => instructions.push(Instruction::OutputCR),
+                _ if token.eq_ignore_ascii_case("cr") => instructions.push(Instruction::output(CR)),
                 _ if token.starts_with('.') && token.ends_with('"') => {
                     let quoted_string = &token[3..token.len() - 1];
-                    instructions.push(Instruction::OutputDotQuote(quoted_string.to_string()));
+                    instructions.push(Instruction::output(OutputInstruction::dot_quote(
+                        quoted_string.to_string(),
+                    )));
                 }
                 _ if self.is_number(token.to_string()) => {
                     if let Ok(parsed_num) = token.parse::<i16>() {
-                        instructions.push(Instruction::Number(parsed_num));
+                        instructions.push(Instruction::number(parsed_num));
                     }
                 }
                 _ if self.is_operator(token.to_string()) => {
                     if word_manager.is_word_defined(&WordType::UserDefined(token.to_string())) {
-                        instructions.push(Instruction::DefinitionType(DefinitionType::Name(
-                            token.to_string(),
+                        instructions.push(Instruction::definition_type(DefinitionType::Name(
+                            token.to_lowercase().to_string(),
                         )));
                     } else {
-                        instructions.push(Instruction::Operator(token));
+                        instructions.push(Instruction::operator(token));
                     }
                 }
                 _ if self.parse_logical_operation(&token).is_some() => {
@@ -264,15 +252,11 @@ impl Parser {
                 _ if self.parse_stack_operation(&token, word_manager).is_some() => {
                     if let Some(stack_op) = self.parse_stack_operation(&token, word_manager) {
                         instructions.push(stack_op);
-                    } else {
-                        println!("Error parsing token to stack operation: {:?}", token);
                     }
                 }
                 _ => {
                     if let Some(word) = self.parse_word(&token, word_manager) {
                         instructions.push(word);
-                    } else {
-                        println!("Error parsing token to word: {:?}", token);
                     }
                 }
             },
@@ -318,11 +302,11 @@ impl Parser {
     /// - `None` if the token is not a logical operation.
     fn parse_logical_operation(&self, token: &str) -> Option<Instruction> {
         match token {
-            _ if token.eq_ignore_ascii_case("<") => Some(Instruction::LogicalOperation(LESS_THAN)),
+            _ if token.eq_ignore_ascii_case("<") => Some(Instruction::logical_operation(LESS_THAN)),
             _ if token.eq_ignore_ascii_case(">") => {
-                Some(Instruction::LogicalOperation(GREATER_THAN))
+                Some(Instruction::logical_operation(GREATER_THAN))
             }
-            _ if token.eq_ignore_ascii_case("=") => Some(Instruction::LogicalOperation(EQUAL)),
+            _ if token.eq_ignore_ascii_case("=") => Some(Instruction::logical_operation(EQUAL)),
             _ => None,
         }
     }
@@ -339,9 +323,9 @@ impl Parser {
     /// - `None` if the token is not a boolean operation.
     fn parse_boolean_operation(&self, token: &str) -> Option<Instruction> {
         match token {
-            _ if token.eq_ignore_ascii_case("and") => Some(Instruction::BooleanOperation(AND)),
-            _ if token.eq_ignore_ascii_case("or") => Some(Instruction::BooleanOperation(OR)),
-            _ if token.eq_ignore_ascii_case("not") => Some(Instruction::BooleanOperation(NOT)),
+            _ if token.eq_ignore_ascii_case("and") => Some(Instruction::boolean_operation(AND)),
+            _ if token.eq_ignore_ascii_case("or") => Some(Instruction::boolean_operation(OR)),
+            _ if token.eq_ignore_ascii_case("not") => Some(Instruction::boolean_operation(NOT)),
             _ => None,
         }
     }
@@ -369,11 +353,11 @@ impl Parser {
         }
 
         match token {
-            _ if token.eq_ignore_ascii_case("dup") => Some(Instruction::StackWord(DUP)),
-            _ if token.eq_ignore_ascii_case("drop") => Some(Instruction::StackWord(DROP)),
-            _ if token.eq_ignore_ascii_case("swap") => Some(Instruction::StackWord(SWAP)),
-            _ if token.eq_ignore_ascii_case("over") => Some(Instruction::StackWord(OVER)),
-            _ if token.eq_ignore_ascii_case("rot") => Some(Instruction::StackWord(ROT)),
+            _ if token.eq_ignore_ascii_case("dup") => Some(Instruction::stack_word(DUP)),
+            _ if token.eq_ignore_ascii_case("drop") => Some(Instruction::stack_word(DROP)),
+            _ if token.eq_ignore_ascii_case("swap") => Some(Instruction::stack_word(SWAP)),
+            _ if token.eq_ignore_ascii_case("over") => Some(Instruction::stack_word(OVER)),
+            _ if token.eq_ignore_ascii_case("rot") => Some(Instruction::stack_word(ROT)),
             _ => None,
         }
     }
@@ -395,22 +379,16 @@ impl Parser {
         word_manager: &WordDefinitionManager,
     ) -> Option<Instruction> {
         if word_manager.is_word_defined(&WordType::UserDefined(token.to_string())) {
-            return Some(Instruction::DefinitionType(DefinitionType::Name(
+            return Some(Instruction::definition_type(DefinitionType::name(
                 token.to_string(),
             )));
         }
 
         match token.as_str() {
-            _ if token.eq_ignore_ascii_case("if") => {
-                Some(Instruction::DefinitionType(DefinitionType::If))
-            }
-            _ if token.eq_ignore_ascii_case("else") => {
-                Some(Instruction::DefinitionType(DefinitionType::Else))
-            }
-            _ if token.eq_ignore_ascii_case("then") => {
-                Some(Instruction::DefinitionType(DefinitionType::Then))
-            }
-            _ => Some(Instruction::DefinitionType(DefinitionType::Name(
+            _ if token.eq_ignore_ascii_case("if") => Some(Instruction::definition_type(IF)),
+            _ if token.eq_ignore_ascii_case("else") => Some(Instruction::definition_type(ELSE)),
+            _ if token.eq_ignore_ascii_case("then") => Some(Instruction::definition_type(THEN)),
+            _ => Some(Instruction::definition_type(DefinitionType::name(
                 token.to_string().to_lowercase(),
             ))),
         }
@@ -425,8 +403,8 @@ impl Parser {
     ///
     /// # Examples
     /// ```
-    /// use rust_forth::forth::parser::Parser;
-    /// use rust_forth::errors::Error;
+    ///# use rust_forth::forth::parser::Parser;
+    ///# use rust_forth::errors::Error;
     /// let parser = Parser::new();
     /// let input = "stack-size=1024";
     /// let expected_result: usize = 1024;
@@ -454,7 +432,8 @@ impl Parser {
 mod tests {
     use super::*;
     use crate::errors::Error;
-    use crate::{forth::intruction::Instruction, stack::stack_operations::StackOperation};
+    use crate::forth::definition_type::THEN;
+    use crate::forth::intruction::Instruction;
 
     #[test]
     fn can_parse_simple_instructions() {
@@ -462,9 +441,9 @@ mod tests {
         let word_manager = WordDefinitionManager::new();
         let input = String::from("1 2 +");
         let expected_result = vec![
-            Instruction::Number(1),
-            Instruction::Number(2),
-            Instruction::Operator("+".to_string()),
+            Instruction::number(1),
+            Instruction::number(2),
+            Instruction::operator("+".to_string()),
         ];
 
         let result = parser.parse_instructions(input, &word_manager);
@@ -478,9 +457,9 @@ mod tests {
         let word_manager = WordDefinitionManager::new();
         let input = String::from("1 2 <");
         let expected_result = vec![
-            Instruction::Number(1),
-            Instruction::Number(2),
-            Instruction::LogicalOperation(LogicalOperation::LessThan),
+            Instruction::number(1),
+            Instruction::number(2),
+            Instruction::logical_operation(LESS_THAN),
         ];
 
         let result = parser.parse_instructions(input, &word_manager);
@@ -494,13 +473,13 @@ mod tests {
         let word_manager = WordDefinitionManager::new();
         let input = String::from("3 4 < 20 30 < AND");
         let expected_result = vec![
-            Instruction::Number(3),
-            Instruction::Number(4),
-            Instruction::LogicalOperation(LogicalOperation::LessThan),
-            Instruction::Number(20),
-            Instruction::Number(30),
-            Instruction::LogicalOperation(LogicalOperation::LessThan),
-            Instruction::BooleanOperation(BooleanOperation::And),
+            Instruction::number(3),
+            Instruction::number(4),
+            Instruction::logical_operation(LESS_THAN),
+            Instruction::number(20),
+            Instruction::number(30),
+            Instruction::logical_operation(LESS_THAN),
+            Instruction::boolean_operation(AND),
         ];
 
         let result = parser.parse_instructions(input, &word_manager);
@@ -514,12 +493,12 @@ mod tests {
         let word_manager = WordDefinitionManager::new();
         let input = String::from("1 2 3 DROP DUP SWAP");
         let expected_result = vec![
-            Instruction::Number(1),
-            Instruction::Number(2),
-            Instruction::Number(3),
-            Instruction::StackWord(StackOperation::Drop),
-            Instruction::StackWord(StackOperation::Dup),
-            Instruction::StackWord(StackOperation::Swap),
+            Instruction::number(1),
+            Instruction::number(2),
+            Instruction::number(3),
+            Instruction::stack_word(DROP),
+            Instruction::stack_word(DUP),
+            Instruction::stack_word(SWAP),
         ];
 
         let result = parser.parse_instructions(input, &word_manager);
@@ -533,8 +512,8 @@ mod tests {
         let word_manager = WordDefinitionManager::new();
         let input = String::from("AWORD *WORD*");
         let expected_result = vec![
-            Instruction::DefinitionType(DefinitionType::Name("aword".to_string())),
-            Instruction::DefinitionType(DefinitionType::Name("*word*".to_string())),
+            Instruction::definition_type(DefinitionType::name("aword".to_string())),
+            Instruction::definition_type(DefinitionType::name("*word*".to_string())),
         ];
 
         let result = parser.parse_instructions(input, &word_manager);
@@ -548,11 +527,11 @@ mod tests {
         let word_manager = WordDefinitionManager::new();
         let input = String::from(": NEGATE -1 * ;");
         let expected_result = vec![
-            Instruction::StartDefinition,
-            Instruction::DefinitionType(DefinitionType::Name("NEGATE".to_string())),
-            Instruction::Number(-1),
-            Instruction::Operator(String::from("*")),
-            Instruction::EndDefinition,
+            Instruction::start_definition(),
+            Instruction::definition_type(DefinitionType::name("NEGATE".to_string())),
+            Instruction::number(-1),
+            Instruction::operator(String::from("*")),
+            Instruction::end_definition(),
         ];
 
         let result = parser.parse_instructions(input, &word_manager);
@@ -566,11 +545,11 @@ mod tests {
         let word_manager = WordDefinitionManager::new();
         let input = String::from("1 2 and Dup DroP");
         let expected_result = vec![
-            Instruction::Number(1),
-            Instruction::Number(2),
-            Instruction::BooleanOperation(BooleanOperation::And),
-            Instruction::StackWord(StackOperation::Dup),
-            Instruction::StackWord(StackOperation::Drop),
+            Instruction::number(1),
+            Instruction::number(2),
+            Instruction::boolean_operation(AND),
+            Instruction::stack_word(DUP),
+            Instruction::stack_word(DROP),
         ];
 
         let result = parser.parse_instructions(input, &word_manager);
@@ -584,10 +563,10 @@ mod tests {
         let word_manager = WordDefinitionManager::new();
         let input = String::from(". emit CR .\" Hello, World!\"");
         let expected_result = vec![
-            Instruction::OutputDot,
-            Instruction::OutpuEmit,
-            Instruction::OutputCR,
-            Instruction::OutputDotQuote(String::from("Hello, World!")),
+            Instruction::output(DOT),
+            Instruction::output(EMIT),
+            Instruction::output(CR),
+            Instruction::output(OutputInstruction::dot_quote("Hello, World!".to_string())),
         ];
 
         let result = parser.parse_instructions(input, &word_manager);
@@ -602,17 +581,18 @@ mod tests {
         let input =
             String::from(": is-negative? 0 < IF .\" Is negative\" ELSE .\" Is positive\" then ;");
         let expected_result = vec![
-            Instruction::StartDefinition,
-            Instruction::DefinitionType(DefinitionType::Name("is-negative?".to_string())),
-            Instruction::Number(0),
-            Instruction::LogicalOperation(LogicalOperation::LessThan),
-            Instruction::DefinitionType(DefinitionType::If),
-            Instruction::OutputDotQuote(String::from("Is negative")),
-            Instruction::DefinitionType(DefinitionType::Else),
-            Instruction::OutputDotQuote(String::from("Is positive")),
-            Instruction::DefinitionType(DefinitionType::Then),
-            Instruction::EndDefinition,
+            Instruction::start_definition(),
+            Instruction::definition_type(DefinitionType::name("is-negative?".to_string())),
+            Instruction::number(0),
+            Instruction::logical_operation(LESS_THAN),
+            Instruction::definition_type(IF),
+            Instruction::output(OutputInstruction::dot_quote("Is negative")),
+            Instruction::definition_type(ELSE),
+            Instruction::output(OutputInstruction::dot_quote("Is positive")),
+            Instruction::definition_type(THEN),
+            Instruction::end_definition(),
         ];
+
         let result = parser.parse_instructions(input, &word_manager);
         dbg!(&result);
         dbg!(&expected_result);
@@ -657,11 +637,11 @@ mod tests {
         let word_manager = WordDefinitionManager::new();
         let input = String::from("DUP drop swap OVER rOt");
         let expected_result = vec![
-            Instruction::StackWord(StackOperation::Dup),
-            Instruction::StackWord(StackOperation::Drop),
-            Instruction::StackWord(StackOperation::Swap),
-            Instruction::StackWord(StackOperation::Over),
-            Instruction::StackWord(StackOperation::Rot),
+            Instruction::stack_word(DUP),
+            Instruction::stack_word(DROP),
+            Instruction::stack_word(SWAP),
+            Instruction::stack_word(OVER),
+            Instruction::stack_word(ROT),
         ];
 
         let result = parser.parse_instructions(input, &word_manager);
@@ -675,11 +655,11 @@ mod tests {
         let word_manager = WordDefinitionManager::new();
         let input = String::from(": dup-twice dup dup ;");
         let expected_result = vec![
-            Instruction::StartDefinition,
-            Instruction::DefinitionType(DefinitionType::Name("dup-twice".to_string())),
-            Instruction::StackWord(StackOperation::Dup),
-            Instruction::StackWord(StackOperation::Dup),
-            Instruction::EndDefinition,
+            Instruction::start_definition(),
+            Instruction::definition_type(DefinitionType::name("dup-twice".to_string())),
+            Instruction::stack_word(DUP),
+            Instruction::stack_word(DUP),
+            Instruction::end_definition(),
         ];
 
         let result = parser.parse_instructions(input, &word_manager);
@@ -693,9 +673,9 @@ mod tests {
         let word_manager = WordDefinitionManager::new();
         let input = String::from("aWord Aword aword");
         let expected_result = vec![
-            Instruction::DefinitionType(DefinitionType::Name("aword".to_string())),
-            Instruction::DefinitionType(DefinitionType::Name("aword".to_string())),
-            Instruction::DefinitionType(DefinitionType::Name("aword".to_string())),
+            Instruction::definition_type(DefinitionType::name("aword".to_string())),
+            Instruction::definition_type(DefinitionType::name("aword".to_string())),
+            Instruction::definition_type(DefinitionType::name("aword".to_string())),
         ];
 
         let result = parser.parse_instructions(input, &word_manager);
