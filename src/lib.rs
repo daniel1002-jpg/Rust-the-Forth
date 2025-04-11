@@ -1,11 +1,12 @@
 pub mod calculator;
 pub mod errors;
 pub mod forth;
+pub mod handler;
 pub mod stack;
 
 pub use forth::boolean_operations::{BooleanOperation, LogicalOperation};
 pub use forth::interpreter::Forth;
-pub use forth::intructions::ForthInstruction;
+pub use forth::intructions::Instruction;
 use forth::parser::Parser;
 pub use stack::core::Stack;
 
@@ -13,6 +14,10 @@ use crate::errors::Error;
 use std::fs::File;
 use std::io::{self, BufRead, BufWriter, Write};
 
+/// Configuration struct for the Forth interpreter
+/// Contains the file path and optional stack size
+/// The file path is required, while the stack size is optional
+/// The stack size is specified in bytes
 #[derive(Debug, PartialEq)]
 pub struct Config {
     pub file_path: String,
@@ -20,6 +25,12 @@ pub struct Config {
 }
 
 impl Config {
+    /// Constructs a new `Config` instance
+    /// Takes a slice of strings as arguments and a parser
+    /// Returns a `Result` containing the `Config` instance or an error
+    /// If the file path is empty or not provided, it returns a `MissingPathError`
+    /// If the stack size is provided, it attempts to parse it
+    /// If parsing fails, it prints an error message and uses the default stack size
     pub fn build(args: &[String], parser: &Parser) -> Result<Config, Error> {
         if args.len() < 2 || args[1].is_empty() {
             return Err(Error::MissingPathError);
@@ -44,6 +55,16 @@ impl Config {
     }
 }
 
+/// Runs the Forth interpreter with the given configuration
+///
+/// Takes a `Config` instance as an argument
+/// Reads the input file line by line
+///
+/// Parses the instructions and processes them
+///
+/// Writes the stack output to a file named "stack.fth"
+///
+/// Returns a `Result` indicating success or failure
 pub fn run(config: Config) -> Result<(), Box<dyn std::error::Error>> {
     let file = File::open(&config.file_path)?;
     let reader = io::BufReader::new(file);
@@ -64,12 +85,13 @@ pub fn run(config: Config) -> Result<(), Box<dyn std::error::Error>> {
 
     for line in unified_input.lines() {
         let tokens = forth.parse_instructions(line.to_lowercase());
-        forth.process_data(tokens)?;
+        forth.process_instructions(tokens)?;
         write_stack_output(&forth, &mut stack_writer)?;
     }
     Ok(())
 }
 
+/// Writes the current stack output to a file
 fn write_stack_output<W: Write>(
     forth: &Forth<W>,
     stack_writer: &mut BufWriter<File>,
@@ -84,6 +106,11 @@ fn write_stack_output<W: Write>(
     Ok(())
 }
 
+/// Unifies multiline definitions in the input string
+/// This function takes a string input and processes it line by line.
+/// It looks for lines that start with a colon (:) and end with a semicolon (;)
+/// and combines them into a single line.
+/// It returns a new string with the unified definitions.
 fn unify_multiline_definitions(input: String) -> String {
     let mut unified_lines = Vec::new();
     let mut current_definition = String::new();

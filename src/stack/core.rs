@@ -14,13 +14,13 @@ const ELEMENT_SIZE: usize = 2; // i16
 /// ## Fields
 ///
 /// - `capacity` - Field that represents the maximum number of elements that the stack can hold.
-///             The capacity can be defined when crating the stack.     
-///             If not provided, the default capacity is 128 kb.
+///                The capacity can be defined when crating the stack.     
+///                If not provided, the default capacity is 128 kb.
 ///
 /// - `size` - Field that represents the current number of elements in the stack.
 ///
 /// - `data` - Field that holds the elements of the stack.
-/// 
+///
 /// ## Principal Methods
 /// - `new` - Create a new instance of the stack with a defined capacity.
 /// - `push` - Push an element into the stack.
@@ -68,17 +68,17 @@ impl Stack {
     }
 
     /// Push an element into the stack.
-    /// 
+    ///
     /// If the stack is full, it returns an overflow error.
-    /// 
+    ///
     /// # Examples
     /// ```rust
     /// # use rust_forth::stack::core::Stack;
-    /// 
+    ///
     /// let mut stack = Stack::new(None);
     /// stack.push(1).unwrap();
     /// stack.push(2).unwrap();
-    /// 
+    ///
     /// assert_eq!(stack.size(), 2);
     /// ```
     pub fn push(&mut self, element: i16) -> Result<(), Error> {
@@ -93,18 +93,18 @@ impl Stack {
     }
 
     /// Remove (pop) the last element from the stack.
-    /// 
+    ///
     /// If the stack is empty, it returns an underflow error.
-    /// 
+    ///
     /// # Examples
     /// ```rust
     /// # use rust_forth::stack::core::Stack;
-    /// 
+    ///
     /// let mut stack = Stack::new(None);
     /// stack.push(1).unwrap();
     /// stack.push(2).unwrap();
     /// let dropped_element = stack.drop().unwrap();
-    /// 
+    ///
     /// assert_eq!(stack.size(), 1);
     /// assert_eq!(dropped_element, 2);
     /// ```
@@ -119,17 +119,17 @@ impl Stack {
     }
 
     /// Get the last element from the stack, without removing it.
-    /// 
+    ///
     /// If the stack is empty, it returns an underflow error.
-    /// 
+    ///
     /// # Examples
     /// ```rust
     /// # use rust_forth::stack::core::Stack;
-    /// 
+    ///
     /// let mut stack = Stack::new(None);
     /// stack.push(1).unwrap();
     /// let top = stack.top().unwrap();
-    /// 
+    ///
     /// assert_eq!(stack.size(), 1);
     /// assert_eq!(top, &1);
     /// ```
@@ -141,18 +141,18 @@ impl Stack {
     }
 
     /// Duplicate the last element of the stack.
-    /// 
+    ///
     /// If the stack is empty, it returns an underflow error.
     /// If the stack is full, it returns an overflow error.
-    /// 
+    ///
     /// # Examples
     /// ```rust
     /// # use rust_forth::stack::core::Stack;
-    /// 
+    ///
     /// let mut stack = Stack::new(None);
     /// stack.push(1).unwrap();
     /// stack.dup();
-    /// 
+    ///
     /// assert_eq!(stack.size(), 2);
     /// assert_eq!(stack.get_stack_content(), &[1, 1]);
     /// ```
@@ -162,7 +162,7 @@ impl Stack {
         }
 
         if let Ok(&top) = self.top() {
-            let _ = self.push(top);
+            self.push(top)?;
             Ok(())
         } else {
             Err(StackError::Underflow.into())
@@ -170,18 +170,18 @@ impl Stack {
     }
 
     /// Swap the last two elements of the stack.
-    /// 
+    ///
     /// If the stack is empty, it returns an underflow error.
-    /// 
+    ///
     /// # Examples
     /// ```rust
     /// # use rust_forth::stack::core::Stack;
-    /// 
+    ///
     /// let mut stack = Stack::new(None);
     /// stack.push(1).unwrap();
     /// stack.push(2).unwrap();
     /// stack.swap().unwrap();
-    /// 
+    ///
     /// assert_eq!(stack.get_stack_content(), &[2, 1]);
     /// ```
     pub fn swap(&mut self) -> Result<(), Error> {
@@ -191,26 +191,26 @@ impl Stack {
 
         let last = self.drop()?;
         let before_last = self.drop()?;
-        let _ = self.push(last);
-        let _ = self.push(before_last);
+        self.push(last)?;
+        self.push(before_last)?;
         Ok(())
     }
 
     /// Duplicate the second element from the top of the stack.
-    /// 
+    ///
     /// If the stack is empty, it returns an underflow error.
     /// If the stack is full, it returns an overflow error.
-    /// 
+    ///
     /// # Examples
     /// ```rust
     /// # use rust_forth::stack::core::Stack;
-    /// 
+    ///
     /// let mut stack = Stack::new(None);
     /// stack.push(1).unwrap();
     /// stack.push(2).unwrap();
     /// stack.push(3).unwrap();
     /// stack.over().unwrap();
-    /// 
+    ///
     /// assert_eq!(stack.get_stack_content(), &[1, 2, 3, 2]);
     /// ```
     pub fn over(&mut self) -> Result<(), Error> {
@@ -222,25 +222,25 @@ impl Stack {
 
         let last = self.drop()?;
         let before_last = *self.top()?;
-        let _ = self.push(last);
-        let _ = self.push(before_last);
+        self.push(last)?;
+        self.push(before_last)?;
         Ok(())
     }
 
     /// Rotate the top three elements of the stack.
-    /// 
+    ///
     /// If the stack is empty, it returns an underflow error.
-    /// 
+    ///
     /// # Examples
     /// ```rust
     /// # use rust_forth::stack::core::Stack;
-    /// 
+    ///
     /// let mut stack = Stack::new(None);
     /// stack.push(1).unwrap();
     /// stack.push(2).unwrap();
     /// stack.push(3).unwrap();
     /// stack.rot().unwrap();
-    /// 
+    ///
     /// assert_eq!(stack.get_stack_content(), &[2, 3, 1]);
     /// ```
     pub fn rot(&mut self) -> Result<(), Error> {
@@ -258,9 +258,9 @@ impl Stack {
 
         let rotate = self.drop()?;
         for elem in tops {
-            let _ = self.push(elem);
+            self.push(elem)?;
         }
-        let _ = self.push(rotate);
+        self.push(rotate)?;
         Ok(())
     }
 

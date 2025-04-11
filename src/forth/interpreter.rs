@@ -1,14 +1,10 @@
-use super::boolean_operations::BooleanOperationManager;
 use super::forth_errors::ForthError;
 use super::intructions::*;
 use super::parser::Parser;
-use super::word::{Word, WordManager};
-use crate::calculator::operations::Calculator;
+use super::word::{WordDefinitionManager, WordType};
 use crate::errors::Error;
-use crate::stack::core::Stack;
-use crate::stack::stack_operations::{StackOperation, execute_stack_operation};
+use crate::handler::instructions_handler::ExecutionHandler;
 use std::io::Write;
-// use std::rc::Rc;
 
 /// Forth interpreter
 /// This struct represents a Forth interpreter with a stack, calculator, and word manager.
@@ -18,8 +14,8 @@ use std::io::Write;
 ///
 /// # Examples
 /// ```
-/// use rust_forth::forth::interpreter::Forth;
-/// use std::io::Sink;
+///# use rust_forth::forth::interpreter::Forth;
+///# use std::io::Sink;
 /// let forth: Forth<Sink> = Forth::new(None, None);
 /// ```
 /// # Fields
@@ -30,11 +26,8 @@ use std::io::Write;
 /// - `writer`: An optional writer for outputting results.
 /// - `parser`: The parser used for interpreting Forth instructions.
 pub struct Forth<W: Write> {
-    stack: Stack,
-    calculator: Calculator,
-    word_manager: WordManager,
-    boolean_manager: BooleanOperationManager,
-    writer: Option<W>,
+    handler: ExecutionHandler<W>,
+    word_manager: WordDefinitionManager,
     parser: Parser,
 }
 
@@ -45,8 +38,8 @@ impl<W: Write> Forth<W> {
     /// If no writer is provided, output will be directed to the standard output.
     /// # Examples
     /// ```
-    /// use rust_forth::forth::interpreter::Forth;
-    /// use std::io::Sink;
+    ///# use rust_forth::forth::interpreter::Forth;
+    ///# use std::io::Sink;
     /// let forth: Forth<Sink> = Forth::new(None, None);
     /// ```
     /// # Arguments
@@ -54,47 +47,22 @@ impl<W: Write> Forth<W> {
     /// - `writer`: An optional writer for outputting results.
     pub fn new(stack_capacity: Option<usize>, writer: Option<W>) -> Self {
         Forth {
-            stack: Stack::new(stack_capacity),
-            calculator: Calculator::new(),
-            word_manager: WordManager::new(),
-            boolean_manager: BooleanOperationManager::new(),
-            writer,
+            word_manager: WordDefinitionManager::new(),
+            handler: ExecutionHandler::new(stack_capacity, writer),
             parser: Parser::new(),
         }
     }
 
     /// Pushes an element onto the stack.
     pub fn push(&mut self, element: i16) -> Result<(), Error> {
-        self.stack.push(element)
-    }
-
-    /// Manipulates the stack based on the provided stack operation.
-    /// This function executes the specified stack operation (e.g., `dup`, `swap`, `drop`, etc.)
-    /// on the stack. It returns an error if the operation fails.
-    /// # Arguments
-    /// - `stack_operation`: The stack operation to be executed.
-    pub fn stack_manipulate(&mut self, stack_operation: &StackOperation) -> Result<(), Error> {
-        execute_stack_operation(&mut self.stack, stack_operation)?;
-        Ok(())
+        self.handler.handle_push_element(element)
     }
 
     /// Gets the current top element of the stack.
     /// This function returns a reference to the top element of the stack.
     /// If the stack is empty, it returns an error.
-    pub fn stack_top(&self) -> Result<&i16, Error> {
-        self.stack.top()
-    }
-
-    /// Calculates the result of an arithmetic operation on two operands.
-    fn calculate(&mut self, operator: &str) -> Result<i16, Error> {
-        let operand2 = self.stack.drop()?;
-        let operand1 = self.stack.drop()?;
-
-        let result = self.calculator.calculate(operand1, operand2, operator)?;
-
-        let _ = self.stack.push(result);
-
-        Ok(result)
+    pub fn peek_stack(&mut self) -> Result<&i16, Error> {
+        self.handler.handle_get_top_element()
     }
 
     /// Processes a vector of Forth instructions.
@@ -103,92 +71,18 @@ impl<W: Write> Forth<W> {
     /// user-defined words, and boolean operations.
     /// # Arguments
     /// - `data`: A vector of Forth instructions to be processed.
-    pub fn process_data(&mut self, data: Vec<ForthInstruction>) -> Result<(), Error> {
-        // println!("Executing instruction: {:?}", &data);
-
+    pub fn process_instructions(&mut self, data: Vec<Instruction>) -> Result<(), Error> {
         for (i, element) in data.iter().enumerate() {
-            // println!("Stack before: {:?}", self.stack.get_stack_content());
-            // println!("Processing element: {:?}", element);
-
             match element {
-                &ForthInstruction::Number(number) => {
-                    self.stack.push(number)?;
-                }
-                ForthInstruction::Operator(operator) => {
-                    self.calculate(operator)?;
-                }
-                ForthInstruction::StackWord(stack_word) => {
-                    self.stack_manipulate(stack_word)?;
-                }
-                ForthInstruction::StartDefinition => {
-                    self.process_word(data.into_iter().skip(i).collect())?;
+                Instruction::StartDefinition => {
+                    self.define_word(data.into_iter().skip(i).collect())?;
                     break;
                 }
-                ForthInstruction::DefineWord(DefineWord::Name(name)) => {
+                Instruction::DefinitionType(DefinitionType::Name(name)) => {
                     self.execute_new_word(name)?;
                 }
-                ForthInstruction::BooleanOperation(boolean_operation) => {
-                    let operand1 = self.stack.drop()?;
-                    let operand2 = if self.boolean_manager.is_not(boolean_operation) {
-                        None
-                    } else {
-                        Some(self.stack.drop()?)
-                    };
-                    let result = self.boolean_manager.execute_boolean_operation(
-                        boolean_operation,
-                        operand1,
-                        operand2,
-                    );
-                    self.stack.push(result)?;
-                }
-                ForthInstruction::LogicalOperation(logical_operation) => {
-                    let operand2 = self.stack.drop()?;
-                    let operand1 = self.stack.drop()?;
-                    let result = self.boolean_manager.execute_logical_operations(
-                        logical_operation,
-                        operand1,
-                        operand2,
-                    );
-                    self.stack.push(result)?;
-                }
-                ForthInstruction::OutputDot => {
-                    if let Ok(top) = self.stack.drop() {
-                        if let Some(writer) = &mut self.writer {
-                            // println!("satck top {:?}", top);
-                            let _ = write!(writer, "{} ", top);
-                            let _ = writer.flush();
-                        }
-                    }
-                }
-                ForthInstruction::OutputCR => {
-                    if let Some(writer) = &mut self.writer {
-                        let _ = writeln!(writer);
-                        let _ = writer.flush();
-                    }
-                }
-                ForthInstruction::OutpuEmit => {
-                    if let Ok(top) = self.stack.drop() {
-                        if let Ok(ascii_char) = u8::try_from(top) {
-                            if let Some(writer) = &mut self.writer {
-                                // println!("{:?}", ascii_char);
-                                let _ = write!(writer, "{} ", ascii_char as char);
-                                let _ = writer.flush();
-                            }
-                        }
-                    }
-                }
-                ForthInstruction::OutputDotQuote(string) => {
-                    if let Some(writer) = &mut self.writer {
-                        let _ = write!(writer, "{} ", string);
-                        let _ = writer.flush();
-                    }
-                }
-                _ => {}
+                _ => self.handler.handle_instruction(element)?,
             }
-            // println!("Stack after: {:?}", self.stack.get_stack_content());
-            // println!("Stack capacity: {:?}", self.stack.capacity());
-            // println!("Stack size: {:?}", self.stack.size());
-            // println!("{:?}", self.stack);
         }
         Ok(())
     }
@@ -199,15 +93,14 @@ impl<W: Write> Forth<W> {
     /// and defines the new word in the word manager.
     /// # Arguments
     /// - `data`: A vector of Forth instructions containing the word definition.
-    fn process_word(&mut self, data: Vec<ForthInstruction>) -> Result<(), Error> {
+    fn define_word(&mut self, data: Vec<Instruction>) -> Result<(), Error> {
         for (i, element) in data.iter().enumerate() {
-            if let ForthInstruction::StartDefinition = element {
-                if let ForthInstruction::DefineWord(DefineWord::Name(word_name)) = &data[i + 1] {
-                    let word_name = Word::UserDefined(word_name.to_string());
+            if let Instruction::StartDefinition = element {
+                if let Instruction::DefinitionType(DefinitionType::Name(word_name)) = &data[i + 1] {
+                    let word_name = WordType::UserDefined(word_name.to_string());
                     self.define_new_word(word_name, data.into_iter().skip(i + 2).collect())?;
                     break;
                 } else {
-                    println!("Invalid word definition: {:?}", &data[i + 1]);
                     return Err(ForthError::InvalidWord.into());
                 }
             }
@@ -223,8 +116,8 @@ impl<W: Write> Forth<W> {
     /// - `word_body`: A vector of Forth instructions representing the body of the new word.    
     fn define_new_word(
         &mut self,
-        word_name: Word,
-        word_body: Vec<ForthInstruction>,
+        word_name: WordType,
+        word_body: Vec<Instruction>,
     ) -> Result<(), Error> {
         self.word_manager.define_new_word(word_name, word_body)?;
         Ok(())
@@ -235,22 +128,16 @@ impl<W: Write> Forth<W> {
     /// # Arguments
     /// - `word_name`: The name of the word to be executed.
     fn execute_new_word(&mut self, word_name: &str) -> Result<(), Error> {
-        if !self.is_word_defined(&Word::UserDefined(word_name.to_string())) {
+        if !self.is_word_defined(&WordType::UserDefined(word_name.to_string())) {
             return Err(ForthError::UnknownWord.into());
         }
 
-        self.word_manager.execute_word::<W>(
-            &mut self.stack,
-            &self.calculator,
-            &mut self.boolean_manager,
-            &mut self.writer,
-            word_name,
-        )?;
+        self.word_manager.run_word(&mut self.handler, word_name)?;
         Ok(())
     }
 
     /// Checks if a word is defined in the Forth interpreter.
-    pub fn is_word_defined(&self, word_name: &Word) -> bool {
+    pub fn is_word_defined(&self, word_name: &WordType) -> bool {
         self.word_manager.is_word_defined(word_name)
     }
 
@@ -265,35 +152,35 @@ impl<W: Write> Forth<W> {
     /// # Examples
     /// ```rust
     ///# use rust_forth::forth::interpreter::Forth;
-    ///# use rust_forth::forth::intructions::ForthInstruction;
-    ///# use rust_forth::forth::intructions::ForthData;
-    ///# use rust_forth::forth::intructions::DefineWord;
-    ///# use rust_forth::forth::word::Word;
+    ///# use rust_forth::forth::intructions::Instruction;
+    ///# use rust_forth::forth::intructions::WordData;
+    ///# use rust_forth::forth::intructions::DefinitionType;
+    ///# use rust_forth::forth::word::WordType;
     ///# use std::io::Sink;
-    /// 
+    ///
     /// let mut forth: Forth<Sink> = Forth::new(None, None);
-    /// let data: Vec<ForthInstruction> = vec![
-    ///     ForthInstruction::StartDefinition, // start
-    ///     ForthInstruction::DefineWord(DefineWord::Name("NEGATE".to_string())), // word
-    ///     ForthInstruction::Number(-1),
-    ///     ForthInstruction::Operator("*".to_string()),
-    ///     ForthInstruction::EndDefinition, // end
+    /// let data: Vec<Instruction> = vec![
+    ///     Instruction::StartDefinition, // start
+    ///     Instruction::DefinitionType(DefinitionType::Name("NEGATE".to_string())), // word
+    ///     Instruction::Number(-1),
+    ///     Instruction::Operator("*".to_string()),
+    ///     Instruction::EndDefinition, // end
     /// ];
     ///
-    /// let _ = forth.process_data(data);
+    /// let _ = forth.process_instructions(data);
     ///
-    /// assert!(forth.is_word_defined(&Word::UserDefined("NEGATE".to_string())));
+    /// assert!(forth.is_word_defined(&WordType::UserDefined("NEGATE".to_string())));
     /// let expected_definition = vec![
-    ///     ForthData::Number(-1),
-    ///     ForthData::Operator("*".to_string()),
+    ///     WordData::Number(-1),
+    ///     WordData::Operator("*".to_string()),
     /// ];
     /// let actual_definition = forth
-    ///     .get_word_definition(&Word::UserDefined("NEGATE".to_string()))
+    ///     .fetch_word_definition(&WordType::UserDefined("NEGATE".to_string()))
     ///     .unwrap();
     ///
     /// assert_eq!(*actual_definition, expected_definition);
     /// ```
-    pub fn get_word_definition(&mut self, word_name: &Word) -> Option<&Vec<ForthData>> {
+    pub fn fetch_word_definition(&mut self, word_name: &WordType) -> Option<&Vec<WordData>> {
         self.word_manager.get_word_definition(word_name)
     }
 
@@ -313,29 +200,69 @@ impl<W: Write> Forth<W> {
     /// # Returns
     /// A reference to the vector of elements currently in the stack.
     pub fn get_stack_content(&self) -> &Vec<i16> {
-        self.stack.get_stack_content()
+        self.handler.handle_get_stack_content()
     }
 
-    pub fn parse_instructions(&self, line: String) -> Vec<ForthInstruction> {
+    /// Parses a line of Forth instructions.
+    /// This function takes a line of text and parses it into a vector of Forth instructions.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use rust_forth::forth::interpreter::Forth;
+    /// use rust_forth::forth::intructions::Instruction;
+    /// use std::io::Sink;
+    ///
+    /// let forth: Forth<Sink> = Forth::new(None, None);
+    /// let line = "1 2 3 . . .";
+    /// let expected_instructions = vec![
+    ///    Instruction::Number(1),
+    ///    Instruction::Number(2),
+    ///    Instruction::Number(3),
+    ///    Instruction::OutputDot,
+    ///    Instruction::OutputDot,
+    ///    Instruction::OutputDot,
+    /// ];
+    ///
+    /// let instructions = forth.parse_instructions(line.to_string());
+    ///
+    /// assert_eq!(instructions, expected_instructions);
+    /// ```
+    pub fn parse_instructions(&self, line: String) -> Vec<Instruction> {
         self.parser.parse_instructions(line, &self.word_manager)
+    }
+
+    /// Checks if the stack is empty.
+    pub fn is_stack_empty(&self) -> bool {
+        self.handler.handle_is_empty()
+    }
+
+    /// Returns the size of the stack.
+    /// This function returns the number of elements currently in the stack.
+    pub fn stack_size(&self) -> usize {
+        self.handler.handle_stack_size()
+    }
+
+    /// Returns a writer for output (if exists).
+    /// This function returns a mutable reference to the writer used for output.
+    pub fn get_writer(&mut self) -> Option<&mut W> {
+        self.handler.handle_get_writer()
     }
 }
 
+#[cfg(test)]
 mod tests {
-    #![allow(unused_imports)]
+    // #![allow(unused_imports)]
     use crate::forth::boolean_operations::{BooleanOperation, LogicalOperation};
-    use crate::forth::interpreter::{DefineWord, Forth, ForthData, ForthError, ForthInstruction};
-    use crate::forth::word::Word;
+    use crate::forth::interpreter::{DefinitionType, Forth, ForthError, Instruction, WordData};
+    use crate::forth::word::WordType;
     use crate::stack::stack_operations::StackOperation;
     use std::io::Sink;
-    use std::rc::Rc;
-
     #[test]
     fn can_create_forth_with_stack_and_calculator_corectly() {
         let forth: Forth<Sink> = Forth::new(None, None);
 
-        assert!(forth.stack.is_empty());
-        assert_eq!(forth.calculator.calculate(2, 4, "+"), Ok(6));
+        assert!(forth.handler.handle_is_empty());
+        // assert_eq!(forth.handler.handle_calculate(2, 4, "+"), Ok(6));
     }
 
     #[test]
@@ -347,8 +274,8 @@ mod tests {
             let _ = forth.push(*element);
         }
 
-        assert_eq!(forth.stack.size(), 3);
-        assert_eq!(forth.stack.top(), Ok(elements.last().unwrap()));
+        assert_eq!(forth.stack_size(), 3);
+        assert_eq!(forth.peek_stack(), Ok(elements.last().unwrap()));
     }
 
     #[test]
@@ -356,8 +283,12 @@ mod tests {
         let mut forth: Forth<Sink> = Forth::new(None, None);
         let _ = forth.push(2);
         let _ = forth.push(4);
+        let operation = Instruction::Operator("+".to_string());
+        let expected_result = vec![6];
 
-        assert_eq!(forth.calculate("+"), Ok(6));
+        let _ = forth.handler.handle_instruction(&operation);
+
+        assert_eq!(forth.get_stack_content(), &expected_result);
     }
 
     #[test]
@@ -365,73 +296,74 @@ mod tests {
         let mut forth: Forth<Sink> = Forth::new(None, None);
         let _ = forth.push(4);
         let _ = forth.push(2);
+        let operation = Instruction::Operator("/".to_string());
+        let expected_result = vec![2];
 
-        assert_eq!(forth.calculate("/"), Ok(2));
+        let _ = forth.handler.handle_instruction(&operation);
+
+        assert_eq!(forth.get_stack_content(), &expected_result);
     }
 
     #[test]
     fn can_perform_complex_operations_correctly() {
         let mut forth: Forth<Sink> = Forth::new(None, None);
-        let operation: Vec<ForthInstruction> = vec![
-            ForthInstruction::Number(2),
-            ForthInstruction::Number(4),
-            ForthInstruction::Operator("+".to_string()),
-            ForthInstruction::Number(6),
-            ForthInstruction::Operator("-".to_string()),
-            ForthInstruction::Number(8),
-            ForthInstruction::Number(2),
-            ForthInstruction::Operator("*".to_string()),
-            ForthInstruction::Number(4),
-            ForthInstruction::Operator("/".to_string()),
+        let operation: Vec<Instruction> = vec![
+            Instruction::Number(2),
+            Instruction::Number(4),
+            Instruction::Operator("+".to_string()),
+            Instruction::Number(6),
+            Instruction::Operator("-".to_string()),
+            Instruction::Number(8),
+            Instruction::Number(2),
+            Instruction::Operator("*".to_string()),
+            Instruction::Number(4),
+            Instruction::Operator("/".to_string()),
         ];
 
-        let expected_result = vec![0, 4];
-        let _ = forth.process_data(operation);
+        let expected_result = [0, 4];
+        let _ = forth.process_instructions(operation);
 
-        assert_eq!(forth.stack.size(), expected_result.len());
-        assert_eq!(forth.stack.top(), Ok(expected_result.last().unwrap()));
+        assert_eq!(forth.stack_size(), expected_result.len());
+        assert_eq!(forth.get_stack_content(), &expected_result);
     }
 
     #[test]
     fn stack_can_be_manipulated_correctly() {
         let mut forth: Forth<Sink> = Forth::new(None, None);
-        let data: Vec<ForthInstruction> = vec![
-            ForthInstruction::Number(2),
-            ForthInstruction::Number(4),
-            ForthInstruction::StackWord(StackOperation::Dup),
-            ForthInstruction::StackWord(StackOperation::Rot),
-            ForthInstruction::StackWord(StackOperation::Over),
-            ForthInstruction::StackWord(StackOperation::Swap),
-            ForthInstruction::StackWord(StackOperation::Drop),
+        let data: Vec<Instruction> = vec![
+            Instruction::Number(2),
+            Instruction::Number(4),
+            Instruction::StackWord(StackOperation::Dup),
+            Instruction::StackWord(StackOperation::Rot),
+            Instruction::StackWord(StackOperation::Over),
+            Instruction::StackWord(StackOperation::Swap),
+            Instruction::StackWord(StackOperation::Drop),
         ];
         let expected_result = vec![4, 4, 4];
 
-        let _ = forth.process_data(data);
+        let _ = forth.process_instructions(data);
 
-        assert_eq!(forth.stack.size(), expected_result.len());
+        assert_eq!(forth.stack_size(), expected_result.len());
         assert_eq!(forth.get_stack_content(), &expected_result);
     }
 
     #[test]
     fn can_define_new_words() {
         let mut forth: Forth<Sink> = Forth::new(None, None);
-        let data: Vec<ForthInstruction> = vec![
-            ForthInstruction::StartDefinition, // start
-            ForthInstruction::DefineWord(DefineWord::Name("NEGATE".to_string())), // word
-            ForthInstruction::Number(-1),
-            ForthInstruction::Operator("*".to_string()),
-            ForthInstruction::EndDefinition, // end
+        let data: Vec<Instruction> = vec![
+            Instruction::StartDefinition, // start
+            Instruction::DefinitionType(DefinitionType::Name("NEGATE".to_string())), // word
+            Instruction::Number(-1),
+            Instruction::Operator("*".to_string()),
+            Instruction::EndDefinition, // end
         ];
 
-        let _ = forth.process_data(data);
+        let _ = forth.process_instructions(data);
 
-        assert!(forth.is_word_defined(&Word::UserDefined("NEGATE".to_string())));
-        let expected_definition = vec![
-            ForthData::Number(-1),
-            ForthData::Operator("*".to_string()),
-        ];
+        assert!(forth.is_word_defined(&WordType::UserDefined("NEGATE".to_string())));
+        let expected_definition = vec![WordData::Number(-1), WordData::Operator("*".to_string())];
         let actual_definition = forth
-            .get_word_definition(&Word::UserDefined("NEGATE".to_string()))
+            .fetch_word_definition(&WordType::UserDefined("NEGATE".to_string()))
             .unwrap();
 
         assert_eq!(*actual_definition, expected_definition);
@@ -440,37 +372,37 @@ mod tests {
     #[test]
     fn can_execute_a_new_word_defined() {
         let mut forth: Forth<Sink> = Forth::new(None, None);
-        let word: Vec<ForthInstruction> = vec![
-            ForthInstruction::StartDefinition, // start
-            ForthInstruction::DefineWord(DefineWord::Name("NEGATE".to_string())), // word
-            ForthInstruction::Number(-1),
-            ForthInstruction::Operator("*".to_string()),
-            ForthInstruction::EndDefinition, // end
+        let word: Vec<Instruction> = vec![
+            Instruction::StartDefinition, // start
+            Instruction::DefinitionType(DefinitionType::Name("NEGATE".to_string())), // word
+            Instruction::Number(-1),
+            Instruction::Operator("*".to_string()),
+            Instruction::EndDefinition, // end
         ];
-        let data: Vec<ForthInstruction> = vec![
-            ForthInstruction::Number(-10),
-            ForthInstruction::DefineWord(DefineWord::Name("NEGATE".to_string())), // word
+        let data: Vec<Instruction> = vec![
+            Instruction::Number(-10),
+            Instruction::DefinitionType(DefinitionType::Name("NEGATE".to_string())), // word
         ];
-        let expected_result = vec![10];
+        let expected_result = [10];
 
-        let _ = forth.process_data(word);
-        let _ = forth.process_data(data);
+        let _ = forth.process_instructions(word);
+        let _ = forth.process_instructions(data);
 
-        assert_eq!(forth.stack.top(), Ok(expected_result.last().unwrap()));
+        assert_eq!(forth.get_stack_content(), &expected_result);
     }
 
     #[test]
     fn cannot_define_invalid_word() {
         let mut forth: Forth<Sink> = Forth::new(None, None);
-        let data: Vec<ForthInstruction> = vec![
-            ForthInstruction::StartDefinition, // start
-            ForthInstruction::Number(11),
-            ForthInstruction::Number(-1),
-            ForthInstruction::Operator("*".to_string()),
-            ForthInstruction::EndDefinition, // end
+        let data: Vec<Instruction> = vec![
+            Instruction::StartDefinition, // start
+            Instruction::Number(11),
+            Instruction::Number(-1),
+            Instruction::Operator("*".to_string()),
+            Instruction::EndDefinition, // end
         ];
 
-        let result = forth.process_data(data);
+        let result = forth.process_instructions(data);
 
         assert_eq!(result, Err(ForthError::InvalidWord.into()));
     }
@@ -479,20 +411,19 @@ mod tests {
     fn can_execute_boolean_operations_correctly() {
         let mut forth: Forth<Sink> = Forth::new(None, None);
         let data = vec![
-            ForthInstruction::Number(3),
-            ForthInstruction::Number(4),
-            ForthInstruction::LogicalOperation(LogicalOperation::LessThan),
-            ForthInstruction::Number(20),
-            ForthInstruction::Number(10),
-            ForthInstruction::LogicalOperation(LogicalOperation::GreaterThan),
-            ForthInstruction::BooleanOperation(BooleanOperation::And),
+            Instruction::Number(3),
+            Instruction::Number(4),
+            Instruction::LogicalOperation(LogicalOperation::LessThan),
+            Instruction::Number(20),
+            Instruction::Number(10),
+            Instruction::LogicalOperation(LogicalOperation::GreaterThan),
+            Instruction::BooleanOperation(BooleanOperation::And),
         ];
 
-        let expected_result = vec![-1];
+        let expected_result = [-1];
 
-        assert_eq!(forth.process_data(data), Ok(()));
-        assert_eq!(forth.stack.size(), expected_result.len());
-        assert_eq!(forth.stack.top(), Ok(expected_result.last().unwrap()));
+        assert_eq!(forth.process_instructions(data), Ok(()));
+        assert_eq!(forth.get_stack_content(), &expected_result);
     }
 
     #[test]
@@ -500,19 +431,19 @@ mod tests {
         let output = Vec::new();
         let mut forth = Forth::new(None, Some(output));
         let instruction = vec![
-            ForthInstruction::Number(3),
-            ForthInstruction::OutputDot,
-            ForthInstruction::Number(65),
-            ForthInstruction::OutpuEmit,
-            ForthInstruction::Number(4),
-            ForthInstruction::OutputCR,
-            ForthInstruction::OutputDotQuote("word".to_string()),
+            Instruction::Number(3),
+            Instruction::OutputDot,
+            Instruction::Number(65),
+            Instruction::OutpuEmit,
+            Instruction::Number(4),
+            Instruction::OutputCR,
+            Instruction::OutputDotQuote("word".to_string()),
         ];
         let expected_result = "3 A \nword ";
 
-        let _ = forth.process_data(instruction);
+        let _ = forth.process_instructions(instruction);
 
-        let result = String::from_utf8(forth.writer.unwrap()).unwrap();
+        let result = String::from_utf8(forth.get_writer().unwrap().to_vec()).unwrap();
 
         assert_eq!(result, expected_result);
     }

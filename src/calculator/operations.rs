@@ -3,7 +3,6 @@ use crate::errors::Error;
 
 /// A simple calculator that can perform basic arithmetic operations
 /// such as addition, subtraction, multiplication, and division.
-///
 pub struct Calculator {}
 
 impl Default for Calculator {
@@ -17,8 +16,8 @@ impl Calculator {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use rust_forth::calculator::operations::Calculator;
+    /// ```rust
+    ///# use rust_forth::calculator::operations::Calculator;
     /// let calculator = Calculator::new();
     /// ```
     pub fn new() -> Self {
@@ -37,6 +36,8 @@ impl Calculator {
         n1 * n2
     }
 
+    /// Divides two numbers and returns the result.
+    /// If the second number is zero, it returns an error.
     fn divide(&self, n1: i16, n2: i16) -> Result<i16, Error> {
         match n2 {
             0 => Err(CalculatorError::DivisionByZero.into()),
@@ -48,15 +49,16 @@ impl Calculator {
     ///
     /// # Arguments
     ///
-    /// * `n1` - The first number.
-    /// * `n2` - The second number.
-    /// * `operation` - The operation to perform. It can be one of the following:
+    /// - `n1` - The first number.
+    /// - `n2` - The second number.
+    /// - `operation` - The operation to perform. It can be one of the following:
     ///   - "+" for addition
     ///   - "-" for subtraction
     ///   - "*" for multiplication
     ///   - "/" for division
     ///
-    /// Returns the result of the operation as an `i16` value.   
+    /// Returns the result of the operation as an `i16` value.
+    /// If the operation is not recognized, it returns an error.   
     pub fn calculate(&self, n1: i16, n2: i16, operation: &str) -> Result<i16, Error> {
         match operation {
             "+" => Ok(self.add(n1, n2)),

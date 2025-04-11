@@ -3,13 +3,13 @@ use crate::stack::stack_operations::StackOperation;
 use super::boolean_operations::{BooleanOperation, LogicalOperation};
 
 #[derive(Debug, PartialEq)]
-pub enum ForthInstruction {
+pub enum Instruction {
     Number(i16),
     Operator(String),
     StackWord(StackOperation),
     StartDefinition,
     EndDefinition,
-    DefineWord(DefineWord),
+    DefinitionType(DefinitionType),
     BooleanOperation(BooleanOperation),
     LogicalOperation(LogicalOperation),
     OutputDot,
@@ -19,11 +19,11 @@ pub enum ForthInstruction {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum ForthData {
+pub enum WordData {
     Number(i16),
     Operator(String),
     StackWord(StackOperation),
-    DefineWord(DefineWord),
+    DefinitionType(DefinitionType),
     BooleanOperation(BooleanOperation),
     LogicalOperation(LogicalOperation),
     OutputDot,
@@ -34,7 +34,7 @@ pub enum ForthData {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum DefineWord {
+pub enum DefinitionType {
     Name(String),
     If,
     Else,
