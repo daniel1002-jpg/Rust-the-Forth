@@ -1,10 +1,8 @@
 use rust_forth::{
     Forth, Instruction, LogicalOperation,
     forth::{
-        boolean_operations::FORTH_TRUE,
-        forth_errors::ForthError,
-        intructions::{DefinitionType, WordData},
-        word::WordType,
+        boolean_operations::FORTH_TRUE, definition_type::DefinitionType, forth_errors::ForthError,
+        word::WordType, word_data::WordData,
     },
     stack::stack_operations::StackOperation,
 };

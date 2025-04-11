@@ -6,7 +6,7 @@ pub mod stack;
 
 pub use forth::boolean_operations::{BooleanOperation, LogicalOperation};
 pub use forth::interpreter::Forth;
-pub use forth::intructions::Instruction;
+pub use forth::intruction::Instruction;
 use forth::parser::Parser;
 pub use stack::core::Stack;
 

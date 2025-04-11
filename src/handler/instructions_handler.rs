@@ -4,7 +4,7 @@ use crate::{
     BooleanOperation, Instruction, LogicalOperation, Stack,
     calculator::operations::Calculator,
     errors::Error,
-    forth::{boolean_operations::BooleanOperationManager, intructions::WordData},
+    forth::{boolean_operations::BooleanOperationManager, word_data::WordData},
     stack::stack_operations::execute_stack_operation,
 };
 

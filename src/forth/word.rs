@@ -4,8 +4,10 @@ use std::vec;
 
 use crate::errors::Error;
 use crate::forth::boolean_operations::{FORTH_FALSE, FORTH_TRUE};
+use crate::forth::definition_type::DefinitionType;
 use crate::forth::forth_errors::ForthError;
-use crate::forth::intructions::{DefinitionType, Instruction, WordData};
+use crate::forth::intruction::Instruction;
+use crate::forth::word_data::WordData;
 use crate::handler::instructions_handler::ExecutionHandler;
 use crate::stack::stack_operations::StackOperation;
 use crate::{BooleanOperation, LogicalOperation};
@@ -65,8 +67,8 @@ impl WordDefinitionManager {
     ///
     /// ```rust
     ///# use rust_forth::forth::word::{WordDefinitionManager, WordType};
-    ///# use rust_forth::forth::intructions::Instruction;
-    ///# use rust_forth::forth::intructions::WordData;
+    ///# use rust_forth::forth::intruction::Instruction;
+    ///# use rust_forth::forth::word_data::WordData;
     ///
     /// let mut word_manager = WordDefinitionManager::new();
     /// let word_body = vec![
@@ -185,7 +187,7 @@ impl WordDefinitionManager {
     ///
     /// ```rust
     /// # use rust_forth::forth::word::WordDefinitionManager;
-    /// # use rust_forth::forth::intructions::Instruction;
+    /// # use rust_forth::forth::intruction::Instruction;
     /// # use rust_forth::handler::instructions_handler::ExecutionHandler;
     /// # use rust_forth::forth::word::WordType;
     /// # use std::io::Sink;
@@ -376,7 +378,7 @@ fn find_end_definition(body: &[Instruction]) -> Option<usize> {
 mod tests {
     use super::*;
     use crate::forth::boolean_operations::LogicalOperation;
-    use crate::forth::intructions::Instruction;
+    use crate::forth::intruction::Instruction;
     use std::io::Sink;
 
     #[test]

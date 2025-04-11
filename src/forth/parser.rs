@@ -1,9 +1,9 @@
 use crate::errors::Error;
 
-use super::intructions::DefinitionType;
+use super::definition_type::DefinitionType;
 use super::word::{WordDefinitionManager, WordType};
 use crate::forth::boolean_operations::{BooleanOperation, LogicalOperation};
-use crate::forth::intructions::Instruction;
+use crate::forth::intruction::Instruction;
 use crate::stack::stack_operations::StackOperation;
 
 /// Constants for logical operations
@@ -63,7 +63,7 @@ impl Parser {
     /// # Examples
     /// ```
     ///# use rust_forth::forth::parser::Parser;
-    ///# use rust_forth::forth::intructions::Instruction;
+    ///# use rust_forth::forth::intruction::Instruction;
     /// use rust_forth::forth::word::WordDefinitionManager;
     /// let parser = Parser::new();
     /// let word_manager = WordDefinitionManager::new();
@@ -454,7 +454,7 @@ impl Parser {
 mod tests {
     use super::*;
     use crate::errors::Error;
-    use crate::{forth::intructions::Instruction, stack::stack_operations::StackOperation};
+    use crate::{forth::intruction::Instruction, stack::stack_operations::StackOperation};
 
     #[test]
     fn can_parse_simple_instructions() {
