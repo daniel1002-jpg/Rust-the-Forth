@@ -1,0 +1,202 @@
+- name: "positive numbers"
+  code: |
+    1 2 3 4 5
+  expected_stack: [1, 2, 3, 4, 5]
+
+- name: "negative numbers"
+  code: |
+    -1 -2 -3 -4 -5
+  expected_stack: [-1, -2, -3, -4, -5]
+
+- name: "add 1"
+  code: |
+    1 2 +
+  expected_stack: [3]
+
+- name: "add 2"
+  code: |
+    1 2 3 +
+  expected_stack: [1, 5]
+
+- name: "sub 1"
+  code: |
+    3 4 -
+  expected_stack: [-1]
+
+- name: "sub 2"
+  code: |
+    1 12 3 -
+  expected_stack: [1, 9]
+
+- name: "mul 1"
+  code: |
+    2 4 *
+  expected_stack: [8]
+
+- name: "mul 2"
+  code: |
+    1 2 3 *
+  expected_stack: [1, 6]
+
+- name: "div 1"
+  code: |
+    12 3 /
+  expected_stack: [4]
+
+- name: "div 2"
+  code: |
+    8 3 /
+  expected_stack: [2]
+
+- name: "div 3"
+  code: |
+    1 12 3 /
+  expected_stack: [1, 4]
+
+- name: "add sub"
+  code: |
+    1 2 + 4 -
+  expected_stack: [-1]
+
+- name: "mul div"
+  code: |
+    2 4 * 3 /
+  expected_stack: [2]
+
+- name: "mul add"
+  code: |
+    1 3 4 * +
+  expected_stack: [13]
+
+- name: "add mul"
+  code: |
+    1 3 4 + *
+  expected_stack: [7]
+
+- name: "dup 1"
+  code: |
+    1 dup
+  expected_stack: [1, 1]
+
+- name: "dup 2"
+  code: |
+    1 2 dup
+  expected_stack: [1, 2, 2]
+
+- name: "drop 1"
+  code: |
+    1 drop
+  expected_stack: []
+
+- name: "drop 2"
+  code: |
+    1 2 drop
+  expected_stack: [1]
+
+- name: "swap 1"
+  code: |
+    1 2 swap
+  expected_stack: [2, 1]
+
+- name: "swap 2"
+  code: |
+    1 2 3 swap
+  expected_stack: [1, 3, 2]
+
+- name: "over 1"
+  code: |
+    1 2 over
+  expected_stack: [1, 2, 1]
+
+- name: "over 2"
+  code: |
+    1 2 3 over
+  expected_stack: [1, 2, 3, 2]
+
+- name: "rot 1"
+  code: |
+    1 2 3 rot
+  expected_stack: [2, 3, 1]
+
+- name: "rot 2"
+  code: |
+    1 2 3 rot rot rot
+  expected_stack: [1, 2, 3]
+
+- name: "definition 1"
+  code: |
+    : dup-twice dup dup ;
+    1 dup-twice
+  expected_stack: [1, 1, 1]
+
+- name: "definition 2"
+  code: |
+    : countup 1 2 3 ;
+    countup
+  expected_stack: [1, 2, 3]
+
+- name: "redefinition"
+  code: |
+    : foo dup ;
+    : foo dup dup ;
+    1 foo
+  expected_stack: [1, 1, 1]
+
+- name: "shadowing"
+  code: |
+    : swap dup ;
+    1 swap
+  expected_stack: [1, 1]
+
+- name: "shadowing symbol 1"
+  code: |
+    : + * ;
+    3 4 +
+  expected_stack: [12]
+
+- name: "non transitive"
+  code: |
+    : foo 5 ;
+    : bar foo ;
+    : foo 6 ;
+    bar foo
+  expected_stack: [5, 6]
+
+- name: "self definition"
+  code: |
+    : foo 10 ;
+    : foo foo 1 + ;
+    foo
+  expected_stack: [11]
+
+- name: "case insensitive 1"
+  code: |
+    1 DUP Dup dup
+  expected_stack: [1, 1, 1, 1]
+
+- name: "case insensitive 2"
+  code: |
+    1 2 3 4 DROP Drop drop
+  expected_stack: [1]
+
+- name: "case insensitive 3"
+  code: |
+    1 2 SWAP 3 Swap 4 swap
+  expected_stack: [2, 3, 4, 1]
+
+- name: "case insensitive 4"
+  code: |
+    1 2 OVER Over over
+  expected_stack: [1, 2, 1, 2, 1]
+
+- name: "case insensitive 5"
+  code: |
+    : foo dup ;
+    1 FOO Foo foo
+  expected_stack: [1, 1, 1, 1]
+
+- name: "case insensitive 6"
+  code: |
+    : SWAP DUP Dup dup ;
+    1 swap
+  expected_stack: [1, 1, 1, 1]

@@ -1,0 +1,76 @@
+name: Rust CI
+
+on:
+  push:
+    branches:
+      - dev
+      - dev-0.1
+  pull_request:
+    branches:
+      - dev
+      - dev-0.1
+
+jobs:
+    test:
+        runs-on: ubuntu-latest
+        
+        steps:
+        # 1. Clonar repositorio
+            - name: Checkout code
+              uses: actions/checkout@v2
+
+        # 2. Configurar Rust
+            - name: Set up Rust
+              uses: actions-rs/toolchain@v1
+              with:
+                toolchain: stable
+
+        # 3. Compilar poryecto
+            - name: Build project
+              run: cargo build
+
+        # 4. Asegurarse de que el script sea ejecutable
+            - name: Ensure script is executable
+              run: chmod +x ./run_yaml_test.sh
+        
+        # 5. Ejecutar pruebas basadas en archivos .yaml provistos por la catedra
+            - name: Run YAML-based tests
+              run: |
+                for file  in ./tests/yaml/*.yaml; do
+                    echo "Running test for $file"
+                    ./run_yaml_test.sh "$file"
+                    done
+        
+        # 6. Mostrar el resumen acumulado de cada archivo
+            - name: Show accumulated test summary
+              run: cat tests_summary.log
+
+        # 7. Generar y mostrar el resumen global
+            - name: Generate global test summary
+              run: |
+                TOTAL_TESTS=0
+                PASSED_TESTS=0
+                FAILED_TESTS=0
+
+                while IFS= read -r line; do
+                    if [[ "$line" == Total\ tests:* ]]; then
+                        TOTAL_TESTS=$((TOTAL_TESTS + ${line##*: }))
+                    elif [[ "$line" == Passed:* ]]; then
+                        PASSED_TESTS=$((PASSED_TESTS + ${line##*: }))
+                    elif [[ "$line" == Failed:* ]]; then
+                        FAILED_TESTS=$((FAILED_TESTS + ${line##*: }))
+                    fi
+                done < tests_summary.log
+
+                echo "-----------------------------------------------"
+                echo "Global Test Summary:"
+                echo "Total tests: $TOTAL_TESTS"
+                echo "Passed: $PASSED_TESTS"
+                echo "Failed: $FAILED_TESTS"
+                echo "-----------------------------------------------"
+
+                if [[ $FAILED_TESTS -gt 0 ]]; then
+                    exit 1
+                fi
+
+            

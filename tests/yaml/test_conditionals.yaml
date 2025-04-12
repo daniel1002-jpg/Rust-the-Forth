@@ -1,0 +1,84 @@
+- name: "equals true"
+  code: |
+    1 1 =
+  expected_stack: [-1]
+
+- name: "equals false"
+  code: |
+    1 2 =
+  expected_stack: [0]
+
+- name: "less true"
+  code: |
+    1 2 <
+  expected_stack: [-1]
+
+- name: "less false"
+  code: |
+    2 1 <
+  expected_stack: [0]
+
+- name: "less equals"
+  code: |
+    2 2 <
+  expected_stack: [0]
+
+- name: "more true"
+  code: |
+    2 1 >
+  expected_stack: [-1]
+
+- name: "more false"
+  code: |
+    1 2 >
+  expected_stack: [0]
+
+- name: "more equals"
+  code: |
+    2 2 >
+  expected_stack: [0]
+
+- name: "and none"
+  code: |
+    0 0 and
+  expected_stack: [0]
+
+- name: "and one"
+  code: |
+    -1 0 and
+  expected_stack: [0]
+
+- name: "and both"
+  code: |
+    -1 -1 and
+  expected_stack: [-1]
+
+- name: "or none"
+  code: |
+    0 0 or
+  expected_stack: [0]
+
+- name: "or one"
+  code: |
+    -1 0 or
+  expected_stack: [-1]
+
+- name: "or both"
+  code: |
+    -1 -1 or
+  expected_stack: [-1]
+
+- name: "not true"
+  code: |
+    -1 not
+  expected_stack: [0]
+
+- name: "not false"
+  code: |
+    0 not
+  expected_stack: [-1]
+
+- name: "not not"
+  code: |
+    10 not not
+  expected_stack: [-1]

@@ -1,0 +1,46 @@
+- name: "if simple"
+  code: |
+    : f if 2 then ;
+    -1 f
+  expected_stack: [2]
+
+- name: "if else"
+  code: |
+    : f if 2 else 3 then ;
+    -1 f
+    0 f
+  expected_stack: [2, 3]
+
+- name: "nested if"
+  code: |
+    : f
+      if
+        if 1 else 2 then
+      else
+        drop 3
+      then ;
+    -1 -1 f
+    0 -1 f
+    0 0 f
+  expected_stack: [1, 2, 3]
+
+- name: "nested if else"
+  code: |
+    : f
+      dup 0 = if
+        drop 2
+      else dup 1 = if
+        drop 3
+      else
+        drop 4
+      then then ;
+    0 f
+    1 f
+    2 f
+  expected_stack: [2, 3, 4]
+
+- name: "if non canonical"
+  code: |
+    : f if 10 then ;
+    5 f
+  expected_stack: [10]
