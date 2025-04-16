@@ -83,11 +83,14 @@ pub fn run(config: Config) -> Result<(), Box<dyn std::error::Error>> {
 
     let unified_input = unify_multiline_definitions(input);
 
-    for line in unified_input.lines() {
+    let result = unified_input.lines().try_for_each(|line| {
         let tokens = forth.parse_instructions(line.to_lowercase());
-        forth.process_instructions(tokens)?;
-        write_stack_output(&forth, &mut stack_writer)?;
-    }
+        forth.process_instructions(tokens)
+    });
+
+    write_stack_output(&forth, &mut stack_writer)?;
+
+    result?;
     Ok(())
 }
 
