@@ -109,10 +109,6 @@ impl Stack {
     /// assert_eq!(dropped_element, 2);
     /// ```
     pub fn drop(&mut self) -> Result<i16, Error> {
-        if self.is_empty() {
-            return Err(StackError::Underflow.into());
-        }
-
         let dropped = self.data.pop().ok_or(StackError::Underflow)?;
         self.size -= 1;
         Ok(dropped)
@@ -161,12 +157,9 @@ impl Stack {
             return Err(StackError::Overflow.into());
         }
 
-        if let Ok(&top) = self.top() {
-            self.push(top)?;
-            Ok(())
-        } else {
-            Err(StackError::Underflow.into())
-        }
+        let &top = self.top()?;
+        self.push(top)?;
+        Ok(())
     }
 
     /// Swap the last two elements of the stack.
@@ -185,10 +178,6 @@ impl Stack {
     /// assert_eq!(stack.get_stack_content(), &[2, 1]);
     /// ```
     pub fn swap(&mut self) -> Result<(), Error> {
-        if self.size < 2 {
-            return Err(StackError::Underflow.into());
-        }
-
         let last = self.drop()?;
         let before_last = self.drop()?;
         self.push(last)?;
@@ -214,9 +203,7 @@ impl Stack {
     /// assert_eq!(stack.get_stack_content(), &[1, 2, 3, 2]);
     /// ```
     pub fn over(&mut self) -> Result<(), Error> {
-        if self.size < 2 {
-            return Err(StackError::Underflow.into());
-        } else if self.size >= self.capacity {
+        if self.size >= self.capacity {
             return Err(StackError::Overflow.into());
         }
 
