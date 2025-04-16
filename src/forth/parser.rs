@@ -76,6 +76,24 @@ impl Parser {
         instructions
     }
 
+    /// Normalizes a vector of tokens.
+    /// Converts all tokens to lowercase except for quoted strings.
+    /// 
+    /// # Returns
+    /// A vector of normalized tokens.
+    fn normalize_tokens(&self, tokens: Vec<String>) -> Vec<String> {
+        tokens
+            .into_iter()
+            .map(|token| {
+                if token.starts_with(".\"") && token.ends_with("\"") {
+                    token
+                } else {
+                    token.to_lowercase()
+                }
+            })
+            .collect()
+    }
+
     /// Tokenizes the input string into a vector of tokens.
     /// It splits the input string by whitespace and special characters, handling quoted strings separately.
     /// Returns a vector of tokens.
@@ -119,7 +137,6 @@ impl Parser {
             } else if !in_quotes && matches!(chars[i], ':' | ';') {
                 if start < i {
                     tokens.push(input[start..i].to_string());
-                    println!("actual tokens: {:?}", tokens);
                 }
                 tokens.push(input[i..=i].to_string());
                 start = i + 1;
@@ -131,7 +148,8 @@ impl Parser {
         if start < input.len() {
             tokens.push(input[start..].to_string());
         }
-        tokens
+
+        self.normalize_tokens(tokens)
     }
 
     /// Parses a token into a Forth instruction.
@@ -159,10 +177,8 @@ impl Parser {
                 }
                 ";" => instructions.push(Instruction::end_definition()),
                 "." => instructions.push(Instruction::output(DOT)),
-                _ if token.eq_ignore_ascii_case("emit") => {
-                    instructions.push(Instruction::output(EMIT));
-                }
-                _ if token.eq_ignore_ascii_case("cr") => instructions.push(Instruction::output(CR)),
+                "emit" => instructions.push(Instruction::output(EMIT)),
+                "cr" => instructions.push(Instruction::output(CR)),
                 _ if token.starts_with('.') && token.ends_with('"') => {
                     let quoted_string = &token[3..token.len() - 1];
                     instructions.push(Instruction::output(OutputInstruction::dot_quote(
@@ -215,10 +231,8 @@ impl Parser {
                     *state = ParserState::OutsideDefinition;
                 }
                 "." => instructions.push(Instruction::output(DOT)),
-                _ if token.eq_ignore_ascii_case("emit") => {
-                    instructions.push(Instruction::output(EMIT));
-                }
-                _ if token.eq_ignore_ascii_case("cr") => instructions.push(Instruction::output(CR)),
+                "emit" => instructions.push(Instruction::output(EMIT)),
+                "cr" => instructions.push(Instruction::output(CR)),
                 _ if token.starts_with('.') && token.ends_with('"') => {
                     let quoted_string = &token[3..token.len() - 1];
                     instructions.push(Instruction::output(OutputInstruction::dot_quote(
@@ -302,11 +316,9 @@ impl Parser {
     /// - `None` if the token is not a logical operation.
     fn parse_logical_operation(&self, token: &str) -> Option<Instruction> {
         match token {
-            _ if token.eq_ignore_ascii_case("<") => Some(Instruction::logical_operation(LESS_THAN)),
-            _ if token.eq_ignore_ascii_case(">") => {
-                Some(Instruction::logical_operation(GREATER_THAN))
-            }
-            _ if token.eq_ignore_ascii_case("=") => Some(Instruction::logical_operation(EQUAL)),
+            "<" => Some(Instruction::logical_operation(LESS_THAN)),
+            ">" => Some(Instruction::logical_operation(GREATER_THAN)),
+            "=" => Some(Instruction::logical_operation(EQUAL)),
             _ => None,
         }
     }
@@ -323,9 +335,9 @@ impl Parser {
     /// - `None` if the token is not a boolean operation.
     fn parse_boolean_operation(&self, token: &str) -> Option<Instruction> {
         match token {
-            _ if token.eq_ignore_ascii_case("and") => Some(Instruction::boolean_operation(AND)),
-            _ if token.eq_ignore_ascii_case("or") => Some(Instruction::boolean_operation(OR)),
-            _ if token.eq_ignore_ascii_case("not") => Some(Instruction::boolean_operation(NOT)),
+            "and" => Some(Instruction::boolean_operation(AND)),
+            "or" => Some(Instruction::boolean_operation(OR)),
+            "not" => Some(Instruction::boolean_operation(NOT)),
             _ => None,
         }
     }
@@ -353,11 +365,11 @@ impl Parser {
         }
 
         match token {
-            _ if token.eq_ignore_ascii_case("dup") => Some(Instruction::stack_word(DUP)),
-            _ if token.eq_ignore_ascii_case("drop") => Some(Instruction::stack_word(DROP)),
-            _ if token.eq_ignore_ascii_case("swap") => Some(Instruction::stack_word(SWAP)),
-            _ if token.eq_ignore_ascii_case("over") => Some(Instruction::stack_word(OVER)),
-            _ if token.eq_ignore_ascii_case("rot") => Some(Instruction::stack_word(ROT)),
+            "dup" => Some(Instruction::stack_word(DUP)),
+            "drop" => Some(Instruction::stack_word(DROP)),
+            "swap" => Some(Instruction::stack_word(SWAP)),
+            "over" => Some(Instruction::stack_word(OVER)),
+            "rot" => Some(Instruction::stack_word(ROT)),
             _ => None,
         }
     }
@@ -385,9 +397,9 @@ impl Parser {
         }
 
         match token.as_str() {
-            _ if token.eq_ignore_ascii_case("if") => Some(Instruction::definition_type(IF)),
-            _ if token.eq_ignore_ascii_case("else") => Some(Instruction::definition_type(ELSE)),
-            _ if token.eq_ignore_ascii_case("then") => Some(Instruction::definition_type(THEN)),
+            "if" => Some(Instruction::definition_type(IF)),
+            "else" => Some(Instruction::definition_type(ELSE)),
+            "then" => Some(Instruction::definition_type(THEN)),
             _ => Some(Instruction::definition_type(DefinitionType::name(
                 token.to_string().to_lowercase(),
             ))),
@@ -528,7 +540,7 @@ mod tests {
         let input = String::from(": NEGATE -1 * ;");
         let expected_result = vec![
             Instruction::start_definition(),
-            Instruction::definition_type(DefinitionType::name("NEGATE".to_string())),
+            Instruction::definition_type(DefinitionType::name("negate".to_string())),
             Instruction::number(-1),
             Instruction::operator(String::from("*")),
             Instruction::end_definition(),
