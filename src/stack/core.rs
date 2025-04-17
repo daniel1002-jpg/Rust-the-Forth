@@ -13,9 +13,9 @@ const ELEMENT_SIZE: usize = 2; // i16
 ///
 /// ## Fields
 ///
-/// - `capacity` - Field that represents the maximum number of elements that the stack can hold.
-///                The capacity can be defined when crating the stack.     
-///                If not provided, the default capacity is 128 kb.
+/// - `capacity` -  Field that represents the maximum number of elements that the stack can hold.
+///  The capacity can be defined when crating the stack.     
+///  If not provided, the default capacity is 128 kb.
 ///
 /// - `size` - Field that represents the current number of elements in the stack.
 ///
