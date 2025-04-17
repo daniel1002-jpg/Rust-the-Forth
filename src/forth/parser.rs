@@ -7,6 +7,9 @@ use super::word::{WordDefinitionManager, WordType};
 use crate::forth::intruction::Instruction;
 use crate::stack::stack_operations::{DROP, DUP, OVER, ROT, SWAP};
 
+const START_DEFINITION: u8 = b':';
+const END_DEFINITION: u8 = b';';
+
 /// ParserState enum to represent the state of the parser
 /// This enum is used to track whether the parser is currently inside a definition,
 /// outside a definition, or parsing a word name.
@@ -78,7 +81,7 @@ impl Parser {
 
     /// Normalizes a vector of tokens.
     /// Converts all tokens to lowercase except for quoted strings.
-    /// 
+    ///
     /// # Returns
     /// A vector of normalized tokens.
     fn normalize_tokens(&self, tokens: Vec<String>) -> Vec<String> {
@@ -94,6 +97,112 @@ impl Parser {
             .collect()
     }
 
+    /// Tries to process a quoted string in the input.
+    ///
+    /// # Arguments
+    ///
+    /// - `input` - A string containing the input to be processed.
+    /// - `start` - The starting index to look for a quoted string.
+    ///
+    /// # Returns
+    ///
+    /// - `Some((String, usize))` if a quoted string is found, containing the quoted string and the new index.
+    /// - `None` if no quoted string is found.
+    fn try_process_quoted_string(&self, input: &str, start: usize) -> Option<(String, usize)> {
+        if input[start..].starts_with(".\"") {
+            let mut i = start + 2;
+            while i < input.len() && input.as_bytes()[i] != b'"' {
+                i += 1;
+            }
+
+            if i < input.len() && input.as_bytes()[i] == b'"' {
+                let quoted_string = input[start..=i].to_string();
+                return Some((quoted_string, i + 1));
+            }
+        }
+
+        None
+    }
+
+    /// Tries to process a definition character in the input.
+    /// A definition character is either START_DEFINITION or END_DEFINITION.
+    ///
+    /// # Arguments
+    ///
+    /// - `input` - A string containing the input to be processed.
+    /// - `start` - The starting index to look for a definition character.
+    ///
+    /// # Returns
+    ///
+    /// - `Some((String, usize))` if a definition character is found, containing the character and the new index.
+    /// - `None` if no definition character is found.
+    fn try_process_definition_character(
+        &self,
+        input: &str,
+        start: usize,
+    ) -> Option<(String, usize)> {
+        if matches!(input.as_bytes()[start], START_DEFINITION | END_DEFINITION) {
+            let definition_char = input[start..=start].to_string();
+            return Some((definition_char, start + 1));
+        }
+
+        None
+    }
+
+    /// Tries to process whitespace in the input.
+    ///
+    /// # Arguments
+    ///
+    /// - `input` - A string containing the input to be processed.
+    /// - `start` - The starting index to look for whitespace.
+    ///
+    /// # Returns
+    ///
+    /// - `Some((String, usize))` if whitespace is found, containing an empty string and the new index.
+    /// - `None` if no whitespace is found.
+    fn try_process_whitespace(&self, input: &str, start: usize) -> Option<(String, usize)> {
+        let mut i = start;
+        while i < input.len() && input.as_bytes()[i].is_ascii_whitespace() {
+            i += 1;
+        }
+
+        if start < i {
+            return Some((String::new(), i));
+        }
+
+        None
+    }
+
+    /// Tries to process a generic token in the input.
+    ///
+    /// # Arguments
+    ///
+    /// - `input` - A string containing the input to be processed.
+    /// - `start` - The starting index to look for a generic token.
+    ///
+    /// # Returns
+    ///
+    /// - `Some((String, usize))` if a generic token is found, containing the token and the new index.
+    /// - `None` if no generic token is found.
+    fn try_process_generic_token(&self, input: &str, start: usize) -> Option<(String, usize)> {
+        let mut i = start;
+        while i < input.len() && !self.is_especial_character(input.as_bytes()[i]) {
+            i += 1;
+        }
+
+        if start < i {
+            return Some((input[start..i].to_string(), i));
+        }
+
+        None
+    }
+
+    /// Checks if a character is an ASCII whitespace or a special character.
+    /// A special character is defined as ':' or ';'.
+    fn is_especial_character(&self, c: u8) -> bool {
+        c.is_ascii_whitespace() || matches!(c, b':' | b';')
+    }
+
     /// Tokenizes the input string into a vector of tokens.
     /// It splits the input string by whitespace and special characters, handling quoted strings separately.
     /// Returns a vector of tokens.
@@ -102,54 +211,48 @@ impl Parser {
     /// * `input` - A string containing the input to be tokenized.
     fn tokenize(&self, input: &str) -> Vec<String> {
         let mut tokens = Vec::new();
-        let mut in_quotes = false;
-        let mut start = 0;
-        let chars: Vec<char> = input.chars().collect();
-
         let mut i = 0;
-        while i < chars.len() {
-            if chars[i] == '.' && input[i..].starts_with(".\" ") {
-                if start < i {
-                    tokens.push(input[start..i].to_string());
-                }
-                start = i;
-                i += 2;
-                in_quotes = true;
 
-                while i < chars.len() && chars[i] != '"' {
-                    i += 1;
+        while i < input.len() {
+            if let Some((token, new_index)) = self
+                .try_process_quoted_string(input, i)
+                .or_else(|| self.try_process_definition_character(input, i))
+                .or_else(|| self.try_process_whitespace(input, i))
+                .or_else(|| self.try_process_generic_token(input, i))
+            {
+                if !token.is_empty() {
+                    tokens.push(token);
                 }
-
-                if i < chars.len() && chars[i] == '"' {
-                    tokens.push(input[start..=i].to_string());
-                    i += 1;
-                }
-                if in_quotes {
-                    in_quotes = false;
-                }
-                start = i;
-            } else if chars[i].is_whitespace() && !in_quotes {
-                if start < i {
-                    tokens.push(input[start..i].to_string());
-                }
-                start = i + 1;
-                i += 1;
-            } else if !in_quotes && matches!(chars[i], ':' | ';') {
-                if start < i {
-                    tokens.push(input[start..i].to_string());
-                }
-                tokens.push(input[i..=i].to_string());
-                start = i + 1;
-                i += 1;
+                i = new_index;
             } else {
                 i += 1;
             }
         }
-        if start < input.len() {
-            tokens.push(input[start..].to_string());
-        }
 
         self.normalize_tokens(tokens)
+    }
+
+    /// Processes a token and returns the corresponding Forth instruction.
+    ///
+    /// # Arguments
+    /// * `token` - The token to be processed.
+    /// * `word_manager` - The word_manager to check for defined words.
+    ///
+    /// # Returns
+    /// - `Some(Instruction)` if the token is a valid instruction.
+    /// - `None` if the token is not recognized.
+    fn process_token(
+        &self,
+        token: &str,
+        word_manager: &WordDefinitionManager,
+    ) -> Option<Instruction> {
+        self.parse_output_operation(token)
+            .or_else(|| self.parse_number(token))
+            .or_else(|| self.parse_operator(token, word_manager))
+            .or_else(|| self.parse_logical_operation(token))
+            .or_else(|| self.parse_boolean_operation(token))
+            .or_else(|| self.parse_stack_operation(token, word_manager))
+            .or_else(|| self.parse_word(token, word_manager))
     }
 
     /// Parses a token into a Forth instruction.
@@ -170,126 +273,39 @@ impl Parser {
         word_manager: &WordDefinitionManager,
     ) {
         match state {
-            ParserState::OutsideDefinition => match token.as_str() {
-                ":" => {
+            ParserState::OutsideDefinition => {
+                if token == ":" {
                     instructions.push(Instruction::start_definition());
                     *state = ParserState::ParsingWordName;
+                } else if token == ";" {
+                    instructions.push(Instruction::end_definition());
+                } else if let Some(instruction) = self.process_token(&token, word_manager) {
+                    instructions.push(instruction);
                 }
-                ";" => instructions.push(Instruction::end_definition()),
-                "." => instructions.push(Instruction::output(DOT)),
-                "emit" => instructions.push(Instruction::output(EMIT)),
-                "cr" => instructions.push(Instruction::output(CR)),
-                _ if token.starts_with('.') && token.ends_with('"') => {
-                    let quoted_string = &token[3..token.len() - 1];
-                    instructions.push(Instruction::output(OutputInstruction::dot_quote(
-                        quoted_string.to_string(),
-                    )));
-                }
-                _ if self.is_number(token.to_string()) => {
-                    if let Ok(parsed_num) = token.parse::<i16>() {
-                        instructions.push(Instruction::number(parsed_num));
-                    }
-                }
-                _ if self.is_operator(token.to_string()) => {
-                    if word_manager.is_word_defined(&WordType::UserDefined(token.to_string())) {
-                        instructions.push(Instruction::definition_type(DefinitionType::Name(
-                            token.to_lowercase().to_string(),
-                        )));
-                    } else {
-                        instructions.push(Instruction::operator(token));
-                    }
-                }
-                _ if self.parse_stack_operation(&token, word_manager).is_some() => {
-                    if let Some(stack_op) = self.parse_stack_operation(&token, word_manager) {
-                        instructions.push(stack_op);
-                    }
-                }
-                _ if self.parse_logical_operation(&token).is_some() => {
-                    if let Some(logical_op) = self.parse_logical_operation(&token) {
-                        instructions.push(logical_op);
-                    }
-                }
-                _ if self.parse_boolean_operation(&token).is_some() => {
-                    if let Some(boolean_op) = self.parse_boolean_operation(&token) {
-                        instructions.push(boolean_op);
-                    }
-                }
-                _ if self.parse_word(&token, word_manager).is_some() => {
-                    if let Some(word) = self.parse_word(&token, word_manager) {
-                        instructions.push(word);
-                    }
-                }
-                _ => {}
-            },
+            }
             ParserState::ParsingWordName => {
                 instructions.push(Instruction::definition_type(DefinitionType::name(token)));
                 *state = ParserState::InsideDefinition;
             }
-            ParserState::InsideDefinition => match token.as_str() {
-                ";" => {
+            ParserState::InsideDefinition => {
+                if token == ";" {
                     instructions.push(Instruction::end_definition());
                     *state = ParserState::OutsideDefinition;
+                } else if let Some(instruction) = self.process_token(&token, word_manager) {
+                    instructions.push(instruction);
                 }
-                "." => instructions.push(Instruction::output(DOT)),
-                "emit" => instructions.push(Instruction::output(EMIT)),
-                "cr" => instructions.push(Instruction::output(CR)),
-                _ if token.starts_with('.') && token.ends_with('"') => {
-                    let quoted_string = &token[3..token.len() - 1];
-                    instructions.push(Instruction::output(OutputInstruction::dot_quote(
-                        quoted_string.to_string(),
-                    )));
-                }
-                _ if self.is_number(token.to_string()) => {
-                    if let Ok(parsed_num) = token.parse::<i16>() {
-                        instructions.push(Instruction::number(parsed_num));
-                    }
-                }
-                _ if self.is_operator(token.to_string()) => {
-                    if word_manager.is_word_defined(&WordType::UserDefined(token.to_string())) {
-                        instructions.push(Instruction::definition_type(DefinitionType::Name(
-                            token.to_lowercase().to_string(),
-                        )));
-                    } else {
-                        instructions.push(Instruction::operator(token));
-                    }
-                }
-                _ if self.parse_logical_operation(&token).is_some() => {
-                    if let Some(logical_op) = self.parse_logical_operation(&token) {
-                        instructions.push(logical_op);
-                    }
-                }
-                _ if self.parse_boolean_operation(&token).is_some() => {
-                    if let Some(boolean_op) = self.parse_boolean_operation(&token) {
-                        instructions.push(boolean_op);
-                    }
-                }
-                _ if self.parse_stack_operation(&token, word_manager).is_some() => {
-                    if let Some(stack_op) = self.parse_stack_operation(&token, word_manager) {
-                        instructions.push(stack_op);
-                    }
-                }
-                _ => {
-                    if let Some(word) = self.parse_word(&token, word_manager) {
-                        instructions.push(word);
-                    }
-                }
-            },
+            }
         }
     }
 
     /// Checks if a token is a number.
     /// It checks if the token is a valid number, including negative numbers.
+    ///
     /// # Arguments
+    ///
     /// - `token` - A string containing the token to be checked.
     fn is_number(&self, token: String) -> bool {
-        if token.is_empty() {
-            return false;
-        }
-        let chars: Vec<char> = token.chars().collect();
-        if chars[0] == '-' {
-            return chars.len() > 1 && chars[1..].iter().all(|c| c.is_ascii_digit());
-        }
-        chars.iter().all(|c| c.is_ascii_digit())
+        token.parse::<i16>().is_ok()
     }
 
     /// Checks if a token is an operator.
@@ -301,6 +317,78 @@ impl Parser {
     /// - `token` - A string containing the token to be checked.
     fn is_operator(&self, token: String) -> bool {
         matches!(token.as_str(), "+" | "-" | "*" | "/")
+    }
+
+    /// Parses a token into an output operation.
+    /// It checks if the token is a recognized output operation and creates the corresponding Forth instruction.
+    ///
+    /// # Arguments
+    ///
+    /// - `token` - A string containing the token to be parsed.
+    ///
+    /// # Returns
+    ///
+    /// - `Some(Instruction)` if the token is a recognized output operation.
+    /// - `None` if the token is not a recognized output operation.
+    fn parse_output_operation(&self, token: &str) -> Option<Instruction> {
+        match token {
+            "." => Some(Instruction::output(DOT)),
+            "emit" => Some(Instruction::output(EMIT)),
+            "cr" => Some(Instruction::output(CR)),
+            _ if token.starts_with(".\"") && token.ends_with("\"") => {
+                let quoted_string = &token[3..token.len() - 1];
+                Some(Instruction::output(OutputInstruction::dot_quote(
+                    quoted_string.to_string(),
+                )))
+            }
+            _ => None,
+        }
+    }
+
+    /// Parses a token into a number.
+    /// It checks if the token is a valid number and creates the corresponding Forth instruction.
+    ///
+    /// # Arguments
+    ///
+    /// - `token` - A string containing the token to be parsed.
+    ///
+    /// # Returns
+    ///
+    /// - `Some(Instruction)` if the token is a valid number.
+    /// - `None` if the token is not a valid number.
+    fn parse_number(&self, token: &str) -> Option<Instruction> {
+        if self.is_number(token.to_string()) {
+            token.parse::<i16>().ok().map(Instruction::number)
+        } else {
+            None
+        }
+    }
+
+    /// Parses a token into an operator.
+    /// It checks if the token is a recognized operator and creates the corresponding Forth instruction.
+    ///
+    /// # Arguments
+    ///
+    /// - `token` - A string containing the token to be parsed.
+    ///
+    /// # Returns
+    ///
+    /// - `Some(Instruction)` if the token is a recognized operator.
+    /// - `None` if the token is not a recognized operator.
+    fn parse_operator(
+        &self,
+        token: &str,
+        word_manager: &WordDefinitionManager,
+    ) -> Option<Instruction> {
+        if self.is_operator(token.to_string()) {
+            if word_manager.is_word_defined(&WordType::UserDefined(token.to_string())) {
+                return Some(Instruction::definition_type(DefinitionType::Name(
+                    token.to_lowercase(),
+                )));
+            }
+            return Some(Instruction::operator(token.to_string()));
+        }
+        None
     }
 
     /// Parses a token into a logical operation.
@@ -385,25 +473,19 @@ impl Parser {
     ///
     /// - `Some(Instruction)` if the token is a word.
     /// - `None` if the token is not a word.   
-    fn parse_word(
-        &self,
-        token: &String,
-        word_manager: &WordDefinitionManager,
-    ) -> Option<Instruction> {
+    fn parse_word(&self, token: &str, word_manager: &WordDefinitionManager) -> Option<Instruction> {
         if word_manager.is_word_defined(&WordType::UserDefined(token.to_string())) {
             return Some(Instruction::definition_type(DefinitionType::name(
                 token.to_string(),
             )));
         }
 
-        match token.as_str() {
-            "if" => Some(Instruction::definition_type(IF)),
-            "else" => Some(Instruction::definition_type(ELSE)),
-            "then" => Some(Instruction::definition_type(THEN)),
-            _ => Some(Instruction::definition_type(DefinitionType::name(
-                token.to_string().to_lowercase(),
-            ))),
-        }
+        Some(Instruction::definition_type(match token {
+            "if" => IF,
+            "else" => ELSE,
+            "then" => THEN,
+            _ => DefinitionType::name(token.to_string()),
+        }))
     }
 
     /// Parses a stack size from a string input.
@@ -434,7 +516,9 @@ impl Parser {
         }
 
         if let Ok(size) = parts[1].parse::<usize>() {
-            return Ok(size);
+            if size > 0 {
+                return Ok(size);
+            }
         }
         Err(Error::InvalidStackSize)
     }
