@@ -1,6 +1,6 @@
 use super::definition_type::DefinitionType;
 use super::forth_errors::ForthError;
-use super::intruction::Instruction;
+use super::instruction::Instruction;
 use super::parser::Parser;
 use super::word::{WordDefinitionManager, WordType};
 use super::word_data::WordData;
@@ -154,7 +154,7 @@ impl<W: Write> Forth<W> {
     /// # Examples
     /// ```rust
     ///# use rust_forth::forth::interpreter::Forth;
-    ///# use rust_forth::forth::intruction::Instruction;
+    ///# use rust_forth::forth::instruction::Instruction;
     ///# use rust_forth::forth::word_data::WordData;
     ///# use rust_forth::forth::definition_type::DefinitionType;
     ///# use rust_forth::forth::word::WordType;
@@ -212,7 +212,7 @@ impl<W: Write> Forth<W> {
     /// ```rust
     ///# use rust_forth::forth::output_instructions::DOT;
     ///# use rust_forth::forth::interpreter::Forth;
-    ///# use rust_forth::forth::intruction::Instruction;
+    ///# use rust_forth::forth::instruction::Instruction;
     ///# use std::io::Sink;
     ///
     /// let forth: Forth<Sink> = Forth::new(None, None);

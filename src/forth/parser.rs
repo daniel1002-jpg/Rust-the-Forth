@@ -4,7 +4,7 @@ use super::boolean_operations::{AND, EQUAL, GREATER_THAN, LESS_THAN, NOT, OR};
 use super::definition_type::{DefinitionType, ELSE, IF, THEN};
 use super::output_instructions::{CR, DOT, EMIT, OutputInstruction};
 use super::word::{WordDefinitionManager, WordType};
-use crate::forth::intruction::Instruction;
+use crate::forth::instruction::Instruction;
 use crate::stack::stack_operations::{DROP, DUP, OVER, ROT, SWAP};
 
 const START_DEFINITION: u8 = b':';
@@ -50,7 +50,7 @@ impl Parser {
     /// # Examples
     /// ```
     ///# use rust_forth::forth::parser::Parser;
-    ///# use rust_forth::forth::intruction::Instruction;
+    ///# use rust_forth::forth::instruction::Instruction;
     ///# use rust_forth::forth::word::WordDefinitionManager;
     /// let parser = Parser::new();
     /// let word_manager = WordDefinitionManager::new();
@@ -529,7 +529,7 @@ mod tests {
     use super::*;
     use crate::errors::Error;
     use crate::forth::definition_type::THEN;
-    use crate::forth::intruction::Instruction;
+    use crate::forth::instruction::Instruction;
 
     #[test]
     fn can_parse_simple_instructions() {
@@ -708,7 +708,7 @@ mod tests {
     }
 
     #[test]
-    fn try_parse_invalid_stack_size_shoud_throw_error() {
+    fn try_parse_invalid_stack_size_should_throw_error() {
         let parser = Parser::new();
         let input = "stack-size=1024a";
 
@@ -718,7 +718,7 @@ mod tests {
     }
 
     #[test]
-    fn try_parse_negative_stack_size_shoud_throw_error() {
+    fn try_parse_negative_stack_size_should_throw_error() {
         let parser = Parser::new();
         let input = "stack-size=-1024";
 

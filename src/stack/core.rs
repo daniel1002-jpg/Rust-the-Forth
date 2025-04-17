@@ -13,13 +13,16 @@ const ELEMENT_SIZE: usize = 2; // i16
 ///
 /// ## Fields
 ///
-/// - `capacity` -  Field that represents the maximum number of elements that the stack can hold.
-///  The capacity can be defined when crating the stack.     
-///  If not provided, the default capacity is 128 kb.
+/// - `capacity`
+///     - Field that represents the maximum number of elements that the stack can hold.
+//      - The capacity can be defined when creating the stack.
+///     - If not provided, the default capacity is 128 elements (each element occupies 2 bytes).
 ///
-/// - `size` - Field that represents the current number of elements in the stack.
+/// - `size`
+///     - Field that represents the current number of elements in the stack.
 ///
-/// - `data` - Field that holds the elements of the stack.
+/// - `data`
+///     - Field that holds the elements of the stack.
 ///
 /// ## Principal Methods
 /// - `new` - Create a new instance of the stack with a defined capacity.
@@ -38,7 +41,7 @@ pub struct Stack {
 }
 
 impl Stack {
-    /// Create a new intance of the stack with a defined capacity.
+    /// Create a new instance of the stack with a defined capacity.
     /// If not provided, the default capacity is 128 kb.
     /// In other words, the default capacity is 64 elements (each element occupies 2 bytes).
     pub fn new(capacity: Option<usize>) -> Self {
@@ -262,7 +265,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn an_empty_stack_can_be_created_successsfully() {
+    fn an_empty_stack_can_be_created_successfully() {
         let stack = Stack::new(None);
         assert!(stack.is_empty());
     }
@@ -326,19 +329,19 @@ mod tests {
     fn can_drop_elements_from_stack_until_empty() {
         let mut stack = Stack::new(None);
         let elements = vec![1, 2, -3];
-        let mut droped_elements: Vec<Result<i16, &str>> = Vec::new();
+        let mut dropped_elements: Vec<Result<i16, &str>> = Vec::new();
 
         for element in &elements {
             let _ = stack.push(*element);
         }
 
         while !stack.is_empty() {
-            if let Ok(droped) = stack.drop() {
-                droped_elements.push(Ok(droped));
+            if let Ok(dropped) = stack.drop() {
+                dropped_elements.push(Ok(dropped));
             }
         }
 
-        assert_eq!(droped_elements, vec![Ok(-3), Ok(2), Ok(1)]);
+        assert_eq!(dropped_elements, vec![Ok(-3), Ok(2), Ok(1)]);
         assert_eq!(stack.size(), 0);
         assert!(stack.is_empty());
     }
@@ -356,17 +359,17 @@ mod tests {
         let stack = Stack::new(Some(capacity));
         // stack capacity expected:
         // capacity / number of bytes an element occupies
-        let expected_capacty = capacity / ELEMENT_SIZE;
+        let expected_capacity = capacity / ELEMENT_SIZE;
 
-        assert_eq!(stack.capacity(), expected_capacty);
+        assert_eq!(stack.capacity(), expected_capacity);
     }
 
     #[test]
     fn can_create_stack_with_default_capacity() {
         let stack = Stack::new(None);
-        let expected_capacty = DEFAULT_CAPACITY / ELEMENT_SIZE;
+        let expected_capacity = DEFAULT_CAPACITY / ELEMENT_SIZE;
 
-        assert_eq!(stack.capacity(), expected_capacty);
+        assert_eq!(stack.capacity(), expected_capacity);
     }
 
     #[test]
@@ -397,7 +400,7 @@ mod tests {
     }
 
     #[test]
-    fn can_dupplicate_last_element_into_stack() {
+    fn can_duplicate_last_element_into_stack() {
         let mut stack = Stack::new(None);
         let elements = vec![1, 3];
         let last = elements.last().copied();
@@ -412,13 +415,13 @@ mod tests {
     }
 
     #[test]
-    fn try_dupplicate_from_empty_stack_should_give_error() {
+    fn try_duplicate_from_empty_stack_should_give_error() {
         let mut stack = Stack::new(None);
         assert_eq!(stack.dup(), Err(StackError::Underflow.into()));
     }
 
     #[test]
-    fn try_dupplicate_from_full_stack_should_give_error() {
+    fn try_duplicate_from_full_stack_should_give_error() {
         let capacity = 2;
         let mut stack = Stack::new(Some(capacity));
 
@@ -477,7 +480,7 @@ mod tests {
     }
 
     #[test]
-    fn use_over_action_with_full_stack_shiuld_give_error() {
+    fn use_over_action_with_full_stack_should_give_error() {
         let capacity = 10;
         let mut stack = Stack::new(Some(capacity));
 
@@ -494,7 +497,7 @@ mod tests {
     fn can_use_the_over_action_on_the_stack() {
         let mut stack = Stack::new(None);
         let mut elements = vec![1, 2, 3];
-        let mut dropped = Vec::new();
+        let mut droppeds = Vec::new();
 
         for element in &elements {
             let _ = stack.push(*element);
@@ -503,8 +506,8 @@ mod tests {
         let _ = stack.over();
 
         for _ in 0..stack.size() {
-            if let Ok(droped) = stack.drop() {
-                dropped.push(droped);
+            if let Ok(dropped) = stack.drop() {
+                droppeds.push(dropped);
             }
         }
 
@@ -514,14 +517,14 @@ mod tests {
         elements.push(before_last);
         elements.reverse();
 
-        assert_eq!(dropped, elements);
+        assert_eq!(droppeds, elements);
     }
 
     #[test]
     fn can_use_the_over_action_on_the_stack_with_two_elements() {
         let mut stack = Stack::new(None);
         let mut elements = vec![1, 2];
-        let mut dropped = Vec::new();
+        let mut droppeds = Vec::new();
 
         for element in &elements {
             let _ = stack.push(*element);
@@ -530,8 +533,8 @@ mod tests {
         let _ = stack.over();
 
         for _ in 0..stack.size() {
-            if let Ok(droped) = stack.drop() {
-                dropped.push(droped);
+            if let Ok(dropped) = stack.drop() {
+                droppeds.push(dropped);
             }
         }
 
@@ -541,7 +544,7 @@ mod tests {
         elements.push(before_last);
         elements.reverse();
 
-        assert_eq!(dropped, elements);
+        assert_eq!(droppeds, elements);
     }
 
     #[test]
@@ -554,7 +557,7 @@ mod tests {
     fn can_rotate_top_three_elements_in_stack() {
         let mut stack = Stack::new(None);
         let elements = vec![1, 2, 3];
-        let mut dropped = Vec::new();
+        let mut droppeds = Vec::new();
 
         for element in &elements {
             let _ = stack.push(*element);
@@ -563,11 +566,11 @@ mod tests {
         let _ = stack.rot();
 
         for _ in 0..stack.size() {
-            if let Ok(droped) = stack.drop() {
-                dropped.push(droped);
+            if let Ok(dropped) = stack.drop() {
+                droppeds.push(dropped);
             }
         }
 
-        assert_eq!(dropped, [1, 3, 2]);
+        assert_eq!(droppeds, [1, 3, 2]);
     }
 }

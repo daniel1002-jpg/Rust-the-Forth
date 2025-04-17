@@ -5,8 +5,8 @@ pub mod handler;
 pub mod stack;
 
 pub use forth::boolean_operations::{BooleanOperation, LogicalOperation};
+pub use forth::instruction::Instruction;
 pub use forth::interpreter::Forth;
-pub use forth::intruction::Instruction;
 use forth::parser::Parser;
 pub use stack::core::Stack;
 
@@ -155,7 +155,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn can_parse_stack_size_recibed_correctly() {
+    fn can_parse_stack_size_received_correctly() {
         let args = vec![
             "program_name".to_string(),
             "path_to_file.fth".to_string(),
@@ -182,7 +182,7 @@ mod tests {
     }
 
     #[test]
-    fn try_buid_config_with_empty_path_throw_error() {
+    fn try_build_config_with_empty_path_throw_error() {
         let args = vec![
             "program_name".to_string(),
             "".to_string(),

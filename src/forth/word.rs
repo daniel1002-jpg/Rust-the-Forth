@@ -5,7 +5,7 @@ use std::vec;
 use crate::errors::Error;
 use crate::forth::definition_type::DefinitionType;
 use crate::forth::forth_errors::ForthError;
-use crate::forth::intruction::Instruction;
+use crate::forth::instruction::Instruction;
 use crate::forth::word_data::WordData;
 use crate::handler::instructions_handler::ExecutionHandler;
 use crate::stack::stack_operations::StackOperation;
@@ -29,6 +29,13 @@ pub enum WordType {
 /// The `WordDefinitionManager` is responsible for managing the definitions of words in the Forth language.
 /// It stores the definitions of words, their execution stack, and the current nesting level.
 /// It also provides methods for defining new words, executing words, and checking if a word is defined.
+///
+/// # Fields
+///
+/// - `words`: A hash map that maps word names to their definitions.
+/// - `definitions`: A vector that stores the definitions of words.
+/// - `execution_stack`: A stack that stores the words to be executed.
+/// - `nesting_level`: An integer that keeps track of the current nesting level of word definitions.
 pub struct WordDefinitionManager {
     words: HashMap<WordType, usize>,
     definitions: Vec<Vec<WordData>>,
@@ -65,7 +72,7 @@ impl WordDefinitionManager {
     ///
     /// ```rust
     ///# use rust_forth::forth::word::{WordDefinitionManager, WordType};
-    ///# use rust_forth::forth::intruction::Instruction;
+    ///# use rust_forth::forth::instruction::Instruction;
     ///# use rust_forth::forth::word_data::WordData;
     ///
     /// let mut word_manager = WordDefinitionManager::new();
@@ -182,7 +189,7 @@ impl WordDefinitionManager {
     ///
     /// ```rust
     /// # use rust_forth::forth::word::WordDefinitionManager;
-    /// # use rust_forth::forth::intruction::Instruction;
+    /// # use rust_forth::forth::instruction::Instruction;
     /// # use rust_forth::handler::instructions_handler::ExecutionHandler;
     /// # use rust_forth::forth::word::WordType;
     /// # use std::io::Sink;
@@ -379,7 +386,7 @@ fn find_end_definition(body: &[Instruction]) -> Option<usize> {
 mod tests {
     use super::*;
     use crate::forth::boolean_operations::EQUAL;
-    use crate::forth::intruction::Instruction;
+    use crate::forth::instruction::Instruction;
     use std::io::Sink;
 
     #[test]

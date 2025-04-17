@@ -19,12 +19,12 @@ pub const EQUAL: LogicalOperation = LogicalOperation::Equal;
 
 /// Enumeration for boolean operations.
 /// This enum defines the types of operations that can be performed.
-/// 
+///
 /// The operations include:
 /// - And (&&)
 /// - Or (||)
 /// - Not (!)
-/// 
+///
 /// These operations are used to perform logical operations on boolean values.
 #[derive(Debug, PartialEq)]
 pub enum BooleanOperation {
@@ -35,12 +35,12 @@ pub enum BooleanOperation {
 
 /// Enumeration for logical operations.
 /// This enum defines the types of logical operations that can be performed.
-/// 
+///
 /// The operations include:
 /// - LessThan (<)
 /// - GreaterThan (>)
 /// - Equal (=)
-/// 
+///
 /// These operations are used to compare two values and return a boolean result.
 #[derive(Debug, PartialEq)]
 pub enum LogicalOperation {

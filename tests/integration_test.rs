@@ -137,7 +137,7 @@ fn cannot_execute_unknown_word() {
 }
 
 #[test]
-fn can_exute_a_simple_instruction() {
+fn can_execute_a_simple_instruction() {
     let mut forth: Forth<Sink> = Forth::new(None, None);
     let input = String::from("1 2 swap");
     let expected_result = vec![2, 1];

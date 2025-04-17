@@ -14,7 +14,7 @@ use crate::{
 
 /// # ExecutionHandler struct
 ///
-/// This struct is responsable for handling the instructions around of the interpreter.
+/// This struct is responsible for handling the instructions around of the interpreter.
 ///
 /// ## Fields
 ///

@@ -65,13 +65,13 @@ impl Calculator {
             "-" => Ok(self.subtract(n1, n2)),
             "*" => Ok(self.multiply(n1, n2)),
             "/" => self.divide(n1, n2),
-            _ => Err(CalculatorError::UndifiedOperation.into()),
+            _ => Err(CalculatorError::UndefinedOperation.into()),
         }
     }
 }
 
+#[cfg(test)]
 mod tests {
-    #[allow(unused_imports)]
     use crate::calculator::{calculator_errors::CalculatorError, operations::Calculator};
 
     #[test]
@@ -135,7 +135,7 @@ mod tests {
     }
 
     #[test]
-    fn a_calculator_sould_be_able_to_correctly_perform_the_request_operations() {
+    fn a_calculator_should_be_able_to_correctly_perform_the_request_operations() {
         let calculator = Calculator::new();
         let n1 = 4;
         let n2 = 2;
