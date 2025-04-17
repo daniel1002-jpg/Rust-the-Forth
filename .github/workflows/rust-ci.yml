@@ -29,9 +29,9 @@ jobs:
             - name: Run clippy
               run: cargo clippy -- -D warnings
 
-        # 4. Compilar poryecto y fallar en caso de warnings
+        # 4. Compilar poryecto
             - name: Build project
-              run: cargo build -- -D warnings
+              run: cargo build
 
         # 5. Ejecutar tests internos del proyecto
             - name: Run internal tests
