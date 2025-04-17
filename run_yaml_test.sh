@@ -58,7 +58,7 @@ process_block() {
     OUTPUT=$(echo "$RAW_OUTPUT" | grep -vE "Executing instruction|Finished|Running|Compiling")
     
     # Leer el último estado del stack
-    STACK=$(tail -n 1 stack.fth 2>/dev/null | xargs)
+    STACK=$(cat stack.fth 2>/dev/null | xargs)
 
     # Obtener el stack esperado para este bloque
     EXPECTED_STACK_LINE=$(echo "${EXPECTED_STACK_LINES[$((BLOCK_NUMBER -1))]}" | xargs)

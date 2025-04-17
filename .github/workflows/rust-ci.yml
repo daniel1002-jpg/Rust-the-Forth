@@ -25,15 +25,23 @@ jobs:
               with:
                 toolchain: stable
 
-        # 3. Compilar poryecto
-            - name: Build project
-              run: cargo build
+        # 3. Ejecutar linter con cargo clippy
+            - name: Run clippy
+              run: cargo clippy -- -D warnings
 
-        # 4. Asegurarse de que el script sea ejecutable
+        # 4. Compilar poryecto y fallar en caso de warnings
+            - name: Build project
+              run: cargo build -- -D warnings
+
+        # 5. Ejecutar tests internos del proyecto
+            - name: Run internal tests
+              run: cargo test -- -D warnings
+
+        # 6. Asegurarse de que el script sea ejecutable
             - name: Ensure script is executable
               run: chmod +x ./run_yaml_test.sh
         
-        # 5. Ejecutar pruebas basadas en archivos .yaml provistos por la catedra
+        # 7. Ejecutar pruebas basadas en archivos .yaml provistos por la catedra
             - name: Run YAML-based tests
               run: |
                 for file  in ./tests/yaml/*.yaml; do
@@ -41,11 +49,11 @@ jobs:
                     ./run_yaml_test.sh "$file"
                     done
         
-        # 6. Mostrar el resumen acumulado de cada archivo
+        # 8. Mostrar el resumen acumulado de cada archivo
             - name: Show accumulated test summary
               run: cat tests_summary.log
 
-        # 7. Generar y mostrar el resumen global
+        # 9. Generar y mostrar el resumen global
             - name: Generate global test summary
               run: |
                 TOTAL_TESTS=0
