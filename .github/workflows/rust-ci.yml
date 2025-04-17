@@ -35,7 +35,7 @@ jobs:
 
         # 5. Ejecutar tests internos del proyecto
             - name: Run internal tests
-              run: cargo test -- -D warnings
+              run: cargo test
 
         # 6. Asegurarse de que el script sea ejecutable
             - name: Ensure script is executable
